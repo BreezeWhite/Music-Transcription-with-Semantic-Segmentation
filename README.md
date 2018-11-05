@@ -2,8 +2,6 @@
 
 # Music Transcription with Semantic Model
 
-[TOC]
-
 ## About
 
 This is a AMT (Automatic  Music Transcription) project, combined with state-of-the-art image semantic segmentation neural network model. 
@@ -46,7 +44,7 @@ We used semantic segmentation model for transcription, which is also widely used
 
      for MAPS, `cd MAPS/` and execute this command:
 
-     ```python
+     ```
      python3 FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
      ```
 
@@ -66,7 +64,7 @@ We used semantic segmentation model for transcription, which is also widely used
 
   To train the model on MusicNet, run the command:
 
-  ```python
+  ```
   python3 TrainSemanticModel.py --MusicNet-feature-path <path/to/extracted/feature> \
                                 -o <output/model/name>
   ```
@@ -89,7 +87,7 @@ We used semantic segmentation model for transcription, which is also widely used
 
   After training has been done, you can generate the predictions now.
 
-  ```python
+  ```
   python3 Predict.py --model-path <path/to/model> \
   				   --test-path <test/feature/path>
   ```
@@ -110,7 +108,7 @@ We used semantic segmentation model for transcription, which is also widely used
 
   To evaluate the scores of the predictions with label, run the command:
 
-  ```python
+  ```
   python3 Evaluation.py --test-pred-path <path/to/predictions>
   ```
 
