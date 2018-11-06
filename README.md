@@ -89,7 +89,7 @@ We used semantic segmentation model for transcription, which is also widely used
 
   ```
   python3 Predict.py --model-path <path/to/model> \
-  				           --test-path <test/feature/path>
+                     --test-path <test/feature/path>
   ```
 
   The flag `--test-path` can both be a directory or a *.hdf* feature file. If is a directory, then all the files inside this dir will be processed. 
