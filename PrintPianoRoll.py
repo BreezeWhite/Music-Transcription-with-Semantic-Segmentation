@@ -262,9 +262,6 @@ if __name__ == "__main__":
     ##  Parameter post-process   
     assert(args.pred_path is not None)
     
-    if -1 in args.spec_instrument:
-        args.spec_instrument = [i for i in range(len(MusicNet_Instruments))]
-        
     if args.quantize:
         config_f = os.path.join(args.pred_path, "configuration.csv")
         if os.path.exists(config_f):
@@ -295,6 +292,9 @@ if __name__ == "__main__":
     
     num = len(data)
     test_onsets = False
+    
+    if -1 in args.spec_instrument:
+        args.spec_instrument = [i for i in range(data[0].shape[2])] #[i for i in range(len(MusicNet_Instruments))]
 
 
     ## Start to plot figures

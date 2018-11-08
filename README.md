@@ -81,7 +81,7 @@ We used semantic segmentation model for transcription, which is also widely used
 
   There are also some callbacks being applied to the training. You can find it around *line 130~140* in *TrainSemanticModel.py*.
 
-  ---
+---
 
 - #### Prediction
 
@@ -136,10 +136,24 @@ We used semantic segmentation model for transcription, which is also widely used
 
 - #### Extra
 
-  (Under construction...)
+  - ###### Print Piano Roll
+
+    To print out the predictions as images, like above shown, run the command:
+
+    ```
+    python3 PrintPianoRoll.py -p <path/to/prediction>
+    ```
+
+    The path to the folder should containing *pred.hdf* and *label.hdf*. For each figure, there will at most 4 rows, and two as a group, presenting prediction row and label row to the same piece. If there is no *label.hdf* file, the label row would be the same as prediction row.
+
+    The default setting will print original output values, without thresholding.  If you want to print a thresholded figure, add `--quantize` flag. 
+
+    To specify output path and figure name, add `-o <path/to/output> -f <figure_name>`.
+
+    Notice that if turn on both `--quantize` and `--spec-instrument` to print out some specific instrument channels, you will also need to specify the flag:`--threshold <[list of thresholds]>`, with the same length of specified instruments.
 
 ## Todo
 
 - [ ] Add single-song-test function
-- [ ] Add function to print out piano rolls
+- [x] Add function to print out piano rolls
 - [ ] Add configuration of thresholds to the model
