@@ -7,7 +7,7 @@
 ## Table of Content
 
 * [About](#About)
-* [Overview][#overview]
+* [Overview](#overview)
 * [Usage](#Usage)
   * [Pre-processing](#pre-processing)
   * [Training](#training)
