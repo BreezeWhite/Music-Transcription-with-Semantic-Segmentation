@@ -12,8 +12,6 @@ This work was done based on our prior work of [repo1](https://github.com/BreezeW
 
 The original paper is under reviewing. Coming soon....
 
----
-
 ## Table of Contents
 
 * [About](#About)
@@ -28,8 +26,6 @@ The original paper is under reviewing. Coming soon....
     * [Print Piano Roll](#print-piano-roll)
 * [Todo](#todo)
 
----
-
 ## Overview
 
 One of the main topic in AMT is to transcribe a given raw audio file into symbolic form, that is transformation from wav to midi.  And our work is the middle stage of this final goal, which we first transcribe the audio into what we called "frame level" domain. This means we split time into frames, and the length of each frame is 88, corresponding to the piano rolls. And then make prediction of which key is in activation. 
@@ -43,8 +39,6 @@ The top row is the predicted piano roll, and the bottom row is the original labe
 We used semantic segmentation model for transcription, which is also widely used in the field of image processing.  This model is originally improved from DeepLabV3+, and further combined with U-net architecture and focal loss, Illustrated as below: 
 
 ![model](./figures/ModelArch.png)
-
-
 
 ## Usage
 
@@ -67,8 +61,6 @@ We used semantic segmentation model for transcription, which is also widely used
    ```
 
 3. For more detail usage, run `python3 FeatureExtraction.py --help`
-
----
 
 #### Training
 
@@ -99,8 +91,6 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   There are also some callbacks being applied to the training. You can find it around *line 130~140* in *TrainSemanticModel.py*.
 
----
-
 #### Prediction
 
 After training has been done, you can generate the predictions now.
@@ -119,8 +109,6 @@ The predictions will automatically be saved as a *.hdf* file. You can specify th
 If your ram is not big enough, add `--use-ram False`.
 
 There are also some pre-trained model appended in *CheckPoint* folder. You can see the configuration file for the detail information about what dataset is this model trained on, what type of feature does this model use, and what will it output.
-
----
 
 #### Evaluation
 
@@ -150,8 +138,6 @@ The default instrument to evaluate is 0, which is the first channel. There are 1
 
 You can specify which instrument to evaluate by add `--spec-instrument <channel_num>`.
 
----
-
 #### Single Song Transcription
 
 To transcribe on a single song, run the command:
@@ -161,8 +147,6 @@ python3 SingleSongTest.py -i <input/audio> -m <path/to/pre-trained/model>
 ```
 
 This will output a figure of predicted piano roll without thresholding. And the figure will be under the same path as the given audio. 
-
----
 
 #### Extra
 
