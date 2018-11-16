@@ -1,4 +1,7 @@
 
+import sys
+sys.path.append("MusicNet/")
+
 import os
 import argparse
 import numpy as np
@@ -6,6 +9,7 @@ import numpy as np
 from PrintPianoRoll import PLOT
 from Predict import model_info, predict
 from MusicNet.FeatureExtraction import fetch_harmonic
+from Evaluation import peak_picking
 
 from project.utils import load_model
 from project.MelodyExt import feature_extraction
@@ -76,6 +80,7 @@ def single_song_test():
 def main(args):
     # Pre-process features
     assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again."
+    print("Processing features")
     Z, tfrL0, tfrLF, tfrLQ, t, cenf, f = feature_extraction(args.input_audio)
     
     # Post-process feature according to the configuration of model
@@ -96,16 +101,21 @@ def main(args):
     else:
         assert(len(channels) <= 4)
         
-        feature = np.array([Z, tfrL0, tfrLF, tfrLQ])[channels]
+        feature = np.array([Z, tfrL0, tfrLF, tfrLQ])
         feature = np.transpose(feature, axes=(2, 1, 0))
-        
+
     model = load_model(args.model_path)
     
-    
+
+    print("Predicting...")
     pred = predict(feature, model,
                    channels=channels,
                    instruments=out_class-1)
-    
+
+    for i in range(pred.shape[2]):
+        pred[:,:88,i] = peak_picking(pred[:,:,i])
+    pred = pred[:,:88]
+
     
     # Print figure
     base_path = args.input_audio[:args.input_audio.rfind("/")]
@@ -125,7 +135,9 @@ def main(args):
                                Expected value: 2, Current value: {}".format(out_class)
         titles = ["Piano"]
     
+    print("Ploting figure...")
     PLOT(pred, save_name, plot_range, titles=titles)
+    print("Output figure to {}".format(base_path))
 
 
 if __name__ == "__main__":
