@@ -137,6 +137,10 @@ def model_info(model_path):
         reader = csv.DictReader(config)
         row = next(iter(reader))
         f_type, channels, out_classes = row["Feature type"], row["Input channels"], row["Output classes"]
+        
+        channels = ast.literal_eval(channels)
+        out_classes = int(out_classes)
+        
     return f_type, channels, out_classes
  
 def FullTest(model_path, test_path, 
@@ -169,8 +173,7 @@ def FullTest(model_path, test_path,
     
     # Validate on model/feature configurations
     f_type, channels, out_classes = model_info(model_path)
-    out_classes = int(out_classes)
-    channels = ast.literal_eval(channels)
+    
     if f_type=="HCFP" and features[0].shape[2] < 12:
         assert(False), "The model uses HCFP as input feature, but loaded features are not."
     if f_type=="CFP" and features[0].shape[2] == 12:
