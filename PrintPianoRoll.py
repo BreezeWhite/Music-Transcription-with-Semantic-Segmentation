@@ -140,6 +140,8 @@ def PLOT(data, save_name, plot_range, titles=None, color_map="terrain"):
     plt.clf()
     
     fig, axes = plt.subplots(nrows=data.shape[2])
+    if type(axes) != list:
+        axes = [axes]
     
     for i, ax in enumerate(axes):
         ax.imshow(data[:,:,i].transpose(), aspect='auto', origin='lower', cmap=color_map)
