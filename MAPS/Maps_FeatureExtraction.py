@@ -1,125 +1,95 @@
+import sys
+sys.path.append("../MusicNet")
 
-import os
+import glob, os
 import pickle
-import h5py
-import librosa
-import numpy as np
-import soundfile as sf
-
-from project.MelodyExt import feature_extraction
+from FeatureExtraction import Manage_Feature_Process
+from MAPS_ProcessLabel import ProcessLabel
 
 
 
-def LoadFile(fileName, loadLabel = True):
-    if(not os.path.isfile(fileName)):
-        print("File not found! {}".format(fileName))
+def list_wavs(path):
+    if type(path) == str:
+        return glob.glob(os.path.join(path, "*.wav"))
     
-    maps = h5py.File(fileName,'r')
-    data = maps['imdb']['images']['data'][:].squeeze()
-    label = None
-    if loadLabel:
-        label = maps['imdb']['images']['labels'][:]
-        if label.shape[1] > 88:
-            label = label[:,21:109]
-        label = np.where(label.squeeze()>0, 1, 0)
-    maps.close()
-    
-    data = data.reshape((data.shape[0], 1, 1, data.shape[1]))
-    
-#    onsets_channel = onsets_feature(data)
-#    data = np.concatenate((data, onsets_channel), axis=2)
-    
-    return data, label
-
-
-def label_parse(song, len_t, ori_label_path):
-    # Name conversion
-    audio = song.split("/")[-1]
-    front = audio.split("_")[-1]
-    front = front.split(".")[0]
-    front = front + "_MUS_"
-    name = audio.split(".wav")[0]
-    name = front + name + ".mat"
-    final = os.path.join(ori_label_path, name)
-
-    data, label = LoadFile(final)
-
-    # Process label
-    label_mat = np.zeros((len_t, 352))
-    for i in range(len_t):
-        if (i*2  > len(label)) or (i*2+1 > len(label)): 
-            break
-
-        roll1 = label[i*2]
-        roll2 = label[i*2+1]
-        rollf = roll1 | roll2
+    assert(type(path)==list)
+    files = []
+    for p in path:
+        ff = glob.glob(os.path.join(p, "*.wav"))
+        files.append(ff)
         
-        for j, val in enumerate(rollf):
-            if val == 0:
-                continue
-            #label_mat[correspond_id[j]] = 1
-            bb = j*4
-            rr = range(bb, bb+4)
-            label_mat[i, rr] = 1
+    return files
 
-    return label_mat
-  
-def make_dataset_audio(dataset_name, 
-                       song_list, 
-                       fmt=".pickle",
-                       ori_label_path="/media/whitebreeze/本機磁碟/maps/Full Extraction/GCoS"):
+def Manage_Process_Label(files, save_path, num_per_file, t_unit=0.02):
     
-    X = []
-    Y = []
-    for i, song in enumerate(song_list):
-        print("Extracting({}/{}): {}".format(i+1, len(song_list), song))
+    files = [ff.replace(".wav", ".txt") for ff in files]
+    
+    iters = np.ceil(len(files)/num_per_file).astype('int')
+    for i in trange(iters):
+        sub_files = files[i*num_per_file : (i+1)*num_per_file]
         
-        out   = feature_extraction(song)
-        score = np.transpose(out[0:4], axes=(2, 1, 0))
-        X.append(score)
+        labels = []
+        for sf in sub_files:
+            labels.append(ProcessLabel(sf, t_unit=t_unit))
+
+        f_name = "train" if "train" in files[0] else "test"
+        post   = "_{}_{}_label.pickle".format(num_per_file, i+1)
+        f_name += post
+        f_name = os.path.join(save_path, f_name)
+
+        pickle.dump(labels, open(f_name, 'wb'), pickle.HIGHEST_PROTOCOL)
+    
+def main(args):
+    train_folders = ["AkPnBcht", "AkPnBsdf", "AkPnCGdD", "AkPnStgb", "SptkBGAm", "SptkBGCl"]
+    test_folders  = ["ENSTDkAm", "ENSTDkCl"]
+    train_folders = [os.path.join(args.MAPS_path, ff, "MUS") for ff in train_folders]
+    test_folders  = [os.path.join(args.MAPS_path, ff, "MUS") for ff in test_folders]
+    
+    train_audios = list_wavs(train_folders)
+    test_audios  = list_wavs(test_folders)
+    
+    train_save_path = os.path.join(args.save_path, "train")
+    if not os.path.exists(train_save_path):
+        os.makedirs(train_save_path)
+    test_save_path = os.path.join(args.save_path, "test")
+    if not os.path.exists(test_save_path):
+        os.makedirs(test_save_path)
         
-        score = label_parse(song, len(out[4]), ori_label_path)
-        Y.append(score)
-        
-    pickle.dump(X, open(dataset_name+fmt, 'wb'), pickle.HIGHEST_PROTOCOL)
-    pickle.dump(Y, open(dataset_name+"_label"+fmt, "wb"), pickle.HIGHEST_PROTOCOL)
-    print(str(len(X)) + ' files written in ' + dataset_name)    
-
-def Manage_Feature_Process(audio_path, 
-                           save_path,
-                           save_name,
-                           fmt=".pickle",
-                           num_per_file=30):        
+    train_save_name = "train_" + str(args.train_num_per_file)
+    test_save_name  = "test_" + str(args.test_num_per_file)
     
+    # Process training features
+    Manage_Feature_Process(train_audios, train_save_path, train_save_name, num_per_file=args.train_num_per_file)
+    Manage_Process_Label(train_audios, args.train_save_path, args.train_num_per_file)
     
-    song_list = os.listdir(audio_path)
-    song_list = [os.path.join(audio_path, ss) for ss in song_list]
-    
-    
-    
-    
-    files_num = int(len(song_list)/num_per_file)
-    for i in range(2, files_num):
-        print("Files {}/{}".format(i+1, files_num))
-        
-        sub_list = song_list[(i*num_per_file):((i+1)*num_per_file)]
-        sub_name = os.path.join(save_path, (save_name+"_"+str(i+1)))
-        make_dataset_audio(sub_name, sub_list, fmt)    
-
-
-
+    # Process testing features
+    Manage_Feature_Process(test_audios, test_save_path, test_save_name, num_per_file=args.test_num_per_file)
+    Manage_Process_Label(test_audios, args.test_save_path, args.test_num_per_file)
 
 
 if __name__ == "__main__":
-    train_audio_path = "/media/whitebreeze/本機磁碟/maps/DATASET_Train/wav"
-    test_audio_path  = "/media/whitebreeze/本機磁碟/maps/DATASET_Eval/wav"
     
-    save_path       = "/media/whitebreeze/本機磁碟/maps"
-    train_save_name = "train_30"
-    test_save_name  = "test_10"
+    parser = argparse.ArgumentParser(description="Program to process MAPS features for training and testing.")
+    parser.add_argument("--MAPS-path", 
+                        help="Path to your downloaded MAPS folder path. (default: %(default)s)",
+                        type=str, default="./")
+    parser.add_argument("--train-num-per-file", 
+                        help="Number of pieces to be stored in each output train file (default: %(default)d)",
+                        type=int, default=20)
+    parser.add_argument("--test-num-per-file", 
+                        help="Number of pieces to be stored in each output test file (default: %(default)d)",
+                        type=int, default=10)
+    parser.add_argument("--save-path",
+                        help="Path for saving the output files (default: <MAPS>/features)",
+                        type=str)
+    parser.add_argument("--no-harmonic",
+                        help="Wether to generate harmonic features (HCFP, 12 channels) or CFP features only(4 channels).",
+                        action="store_true")
+    args = parser.parse_args()
     
-    #Manage_Feature_Process(train_audio_path, save_path, train_save_name)
-    Manage_Feature_Process(test_audio_path, save_path, test_save_name, num_per_file=10)
+    
+    main(args)
+    
     
     
     
