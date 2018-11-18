@@ -57,7 +57,7 @@ We used semantic segmentation model for transcription, which is also widely used
    for MAPS, `cd MAPS/` and execute this command:
 
    ```
-   python3 FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
+   python3 Maps_FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
    ```
 
 3. For more detail usage, run `python3 FeatureExtraction.py --help`
