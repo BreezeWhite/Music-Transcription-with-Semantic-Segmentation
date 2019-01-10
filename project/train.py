@@ -18,17 +18,18 @@ def generator_audio2(batch_size,
                      dataset_type="MusicNet",
                      use_ram=False,
                      mpe_only=False):
- 
-    
-    Y = label[:]
-    data = load_hdf(data_path, inplace=use_ram)
 
+    Y = label[:]
+    data = load_hdf(data_path[0], inplace=use_ram)
+    
 
     # Set chorale_indices
     if phase == 'train':
         chorale_indices = np.arange(int(len(data) * percentage_train))
+        chorale_indices = np.arange(len_train) # hack for maestro
     if phase == 'test':
         chorale_indices = np.arange(int(len(data) * percentage_train), len(data))
+        chorale_indices = np.arange(len_train, len_train+len_val) # hack for maestro
     if phase == 'all':
         chorale_indices = np.arange(int(len(data)))
 
@@ -44,7 +45,10 @@ def generator_audio2(batch_size,
     batch = 0
     while True:
         chorale_index = np.random.choice(chorale_indices)
-        chorale_length = len(Y[chorale_index])
+        chorale_length = min(len(Y[chorale_index]), len(data[chorale_index]))
+
+        print(len(Y[chorale_index]), len(data[chorale_index]))
+
         time_index = np.random.randint(0, chorale_length - timesteps)
 
         feature_48 = augment_hdf(data, chorale_index, time_index, timesteps, channels)
@@ -108,13 +112,8 @@ def generator_audio(batch_size,
             if new_x.shape[2] == 1:
                 new_x = new_x.squeeze(axis=2)
     
-            #new_x_12 = note_res_downsampling(new_x)
-            #new_x_12 = padding(new_x_12, 128, timesteps)
-            #X_12.append(new_x_12)
-
             new_x_48 = padding(new_x, 384, timesteps)
             X_48[a] = new_x_48
-            
             
             new_y = np.array(Y[a]) # Dim: frames x roll
             Y[a] = padding(new_y, 384, timesteps, muti_instrument=(instruments>1))
@@ -187,13 +186,8 @@ def train_audio(model,
                 use_ram=False,
                 mpe_only=False):
     
-    #if no_harmonic:
-    #    feature = load_data(dataset_path, inplace=use_ram)
-    #    instance = generator_audio
-    #else:
-    
     label = load_data(label_path)
-       
+
     
     generator_train = (({'input_score_48': features_48,
                          'input_score_12': features_12
@@ -204,7 +198,8 @@ def train_audio(model,
                             features_12,
                             labels
                             ) in generator_audio2(batch_size, timesteps, dataset_path, label, 
-                                          channels=channels, dataset_type=dataset_type, use_ram=use_ram))
+                                          channels=channels, dataset_type=dataset_type, use_ram=use_ram,
+                                          mpe_only=mpe_only))
     
     generator_val = (({'input_score_48': features_48,
                        'input_score_12': features_12
@@ -215,7 +210,8 @@ def train_audio(model,
                           features_12,
                           labels
                           ) in generator_audio2(batch_size, timesteps, dataset_path, label,
-                                        phase='test', channels=channels, dataset_type=dataset_type, use_ram=use_ram))
+                                        phase='test', channels=channels, dataset_type=dataset_type, use_ram=use_ram,
+                                        mpe_only=mpe_only))
 
     model.fit_generator(generator_train, steps_per_epoch=steps,
                         epochs=epoch, verbose=1, validation_data=generator_val,

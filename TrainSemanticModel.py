@@ -87,6 +87,7 @@ def main():
         if args.no_harmonic == True:
             ch_num = 2
             args.channels = [0, 6] # Spec. and Ceps. channel
+            args.channels = [1, 3] # For train on maestro
             feature_type  = "CFP"
         else:
             ch_num = Harmonic_Num * 2
@@ -97,7 +98,6 @@ def main():
             out_classes = 2
         else:
             out_classes = 12
-            
     elif args.MAPS_feature_path is not None:
         base_path = args.MAPS_feature_path
         out_classes = 2
