@@ -22,7 +22,9 @@ def generator_audio2(batch_size,
     Y = label[:]
     data = load_hdf(data_path[0], inplace=use_ram)
     
+    
 
+    
     # Set chorale_indices
     if phase == 'train':
         chorale_indices = np.arange(int(len(data) * percentage_train))
@@ -46,8 +48,6 @@ def generator_audio2(batch_size,
     while True:
         chorale_index = np.random.choice(chorale_indices)
         chorale_length = min(len(Y[chorale_index]), len(data[chorale_index]))
-
-        print(len(Y[chorale_index]), len(data[chorale_index]))
 
         time_index = np.random.randint(0, chorale_length - timesteps)
 
@@ -189,6 +189,7 @@ def train_audio(model,
     label = load_data(label_path)
 
     
+
     generator_train = (({'input_score_48': features_48,
                          'input_score_12': features_12
                          },

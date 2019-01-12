@@ -1,4 +1,5 @@
 import os
+import ast
 import csv
 import h5py
 import pickle
@@ -260,6 +261,17 @@ def save_model(model, model_path, feature_type="CFP", input_channels=[1, 3], out
     
     print("model " + model_name + " saved")
 
+def model_info(model_path):
+    config_file = os.path.join(model_path, "configuration.csv")
+    with open(config_file, "r", newline='') as config:
+        reader = csv.DictReader(config)
+        row = next(iter(reader))
+        f_type, channels, out_classes = row["Feature type"], row["Input channels"], row["Output classes"]
+        
+        channels = ast.literal_eval(channels)
+        out_classes = int(out_classes)
+        
+    return f_type, channels, out_classes
 
 def model_copy(origin, target):
 
