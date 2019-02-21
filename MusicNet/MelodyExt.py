@@ -141,20 +141,21 @@ def CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave):
     return tfrL0, tfrLF, tfrLQ, f, q, t, central_frequencies 
 
 def feature_extraction(filename,
-                       Hop=320,
-                       w=2049,
-                       fr=2.0,
+                       Hop=882,
+                       w=7939,
+                       fr=1.0,
                        fc=27.5,
                        tc=1/4487.0,
                        g=[0.24, 0.6, 1],
-                       NumPerOctave=48):
+                       NumPerOctave=48,
+                       Down_fs=16000):
                        
     x, fs = sf.read(filename)
     if len(x.shape)>1:
        x = np.mean(x, axis = 1)
     #x = x[:3*fs]
-    x = signal.resample_poly(x, 16000, fs)
-    fs = 16000.0 # sampling frequency
+    x = signal.resample_poly(x, Down_fs, fs)
+    fs = Down_fs # sampling frequency
     x = x.astype('float32')
     #Hop = 320 # hop size (in sample)
     h = scipy.signal.blackmanharris(w) # window size
@@ -165,8 +166,35 @@ def feature_extraction(filename,
     g = np.array(g)
     #NumPerOctave = 48 # Number of bins per octave
     #f  --> freq for each axis
-    tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
-    Z = tfrLF * tfrLQ
+
+    MaxSample = 15000
+    samples = np.floor(len(x)/Hop).astype('int')
+    print("# Sample: ", samples)
+    if samples > MaxSample:
+        freq_width = MaxSample * Hop
+        Round = np.ceil(samples/MaxSample).astype('int')
+        tmpL0, tmpLF, tmpLQ, tmpZ = [], [], [], []
+        for i in range(Round):
+            tmpX = x[i*freq_width:(i+1)*freq_width]
+            tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(tmpX, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
+            tmpL0.append(tfrL0)
+            tmpLF.append(tfrLF)
+            tmpLQ.append(tfrLQ)
+            tmpZ.append(tfrLF*tfrLQ)
+
+        tfrL0 = tmpL0.pop(0)
+        tfrLF = tmpLF.pop(0)
+        tfrLQ = tmpLQ.pop(0)
+        Z = tmpZ.pop(0)
+        for i in range(Round-1):
+            tfrL0 = np.concatenate((tfrL0, tmpL0.pop(0)), axis=1)
+            tfrLF = np.concatenate((tfrLF, tmpLF.pop(0)), axis=1)
+            tfrLQ = np.concatenate((tfrLQ, tmpLQ.pop(0)), axis=1)
+            Z = np.concatenate((Z, tmpZ.pop(0)), axis=1)
+    else:
+        tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
+        Z = tfrLF * tfrLQ
+
     return Z, tfrL0, tfrLF, tfrLQ, t, CenFreq, f
 
 def patch_extraction(Z, patch_size, th):

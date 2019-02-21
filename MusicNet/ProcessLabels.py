@@ -174,8 +174,7 @@ def manage_label_process(path, num_per_file, save_path, t_unit=0.02):
             #for v in vals:
             #    if v not in contains[key]:
             #        contains[key].append(v)
-        if True:
-            break
+        
     
     total = sum(stats.values())
     for k in stats:

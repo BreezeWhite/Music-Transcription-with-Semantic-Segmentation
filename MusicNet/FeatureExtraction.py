@@ -40,9 +40,9 @@ def make_dataset_audio(dataset_name,
                        harmonic=False,
                        num_harmonic=0):
     
-    
+    fs = 44100
     if harmonic:
-        freq_range = [1.0, 8000.0]
+        freq_range = [1.0, fs/2]
     else:
         freq_range = [27.5, 4487.0]
     
@@ -53,7 +53,7 @@ def make_dataset_audio(dataset_name,
     for idx, song in enumerate(song_list):
         print("Extracting({}/{}): {}".format(idx+1, len(song_list), song))
         
-        out  = feature_extraction(song, fc=freq_range[0], tc=(1/freq_range[1]))
+        out  = feature_extraction(song, fc=freq_range[0], tc=(1/freq_range[1]), Down_fs=fs)
         cenf = out[5]
         #z, spec, gcos, ceps, cenf = out[0:5]
 
@@ -94,7 +94,7 @@ def Manage_Feature_Process(audio_path,
                            harmonic     = True,
                            permutate    = False):        
     
-    
+     
     song_list = os.listdir(audio_path)
     song_list = [os.path.join(audio_path, ss) for ss in song_list]
     if permutate:
@@ -105,6 +105,7 @@ def Manage_Feature_Process(audio_path,
         writer.writerow(["File name", "id", "Save path"])
         
         files_num = int(len(song_list)/num_per_file)
+        files_num = 1 if files_num == 0 else files_num
         for i in range(files_num):
             print("Files {}/{}".format(i+1, files_num))
             
@@ -118,9 +119,6 @@ def Manage_Feature_Process(audio_path,
                 f_name = save_name+"_"+str(i+1)
                 id = id[(id.rfind("/")+1):]
                 writer.writerow([f_name, id, save_path])
-
-            if True:
-                break
 
 
 if __name__ == "__main__":
@@ -165,14 +163,14 @@ if __name__ == "__main__":
     test_save_name  = "test_" + str(args.test_num_per_file)
     
     # Process training data and label
-    Manage_Feature_Process(train_audio_path, train_save_path, train_save_name,
-                           num_per_file=args.train_num_per_file, harmonic=not args.no_harmonic)
+    #Manage_Feature_Process(train_audio_path, train_save_path, train_save_name,
+    #                       num_per_file=args.train_num_per_file, harmonic=not args.no_harmonic)
     manage_label_process(train_label_path, args.train_num_per_file, train_save_path, t_unit=0.02)
     
     # Process testing data and label
-    Manage_Feature_Process(test_audio_path, test_save_path, test_save_name, 
-                           num_per_file=args.test_num_per_file, harmonic=not args.no_harmonic)
-    manage_label_process(test_label_path, args.test_num_per_file, test_save_path, t_unit=0.02)
+    #Manage_Feature_Process(test_audio_path, test_save_path, test_save_name, 
+    #                       num_per_file=args.test_num_per_file, harmonic=not args.no_harmonic)
+    #manage_label_process(test_label_path, args.test_num_per_file, test_save_path, t_unit=0.02)
     
     
     

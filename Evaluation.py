@@ -261,6 +261,8 @@ if __name__ == "__main__":
     validate = True
     onsets = False
     
+    
+    best = {"th": 0.20}
 
     # Validation
     if validate:
@@ -272,8 +274,11 @@ if __name__ == "__main__":
         del v_preds, v_labels
 
     # Test
-    print("Loading testing predictions: ", args.test_pred_path)
-    t_preds, t_labels = load_prediction(args.test_pred_path)
+    if args.val_pred_path is None:
+        t_preds, t_labels = v_preds, v_labels
+    else:
+        print("Loading testing predictions: ", args.test_pred_path)
+        t_preds, t_labels = load_prediction(args.test_pred_path)
     
     if args.merge_channels:
         t_preds = [merge(p) for p in t_preds]

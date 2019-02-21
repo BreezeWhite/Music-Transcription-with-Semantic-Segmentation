@@ -31,12 +31,12 @@ def arguments_post_process(args):
         args.output_model_name = args.input_model
         
         # load configuration of previous training
-        feature_type, channels, out_classes = model_info(args.input_model)
+        feature_type, channels, out_classes = model_info(os.path.join("model", args.input_model))
         ch_num = len(channels)
         args.channels = channels
 
         # load model
-        model = load_model(args.input_model)
+        model = load_model(os.path.join("model", args.input_model))
 
     # Train a new model
     else:
@@ -48,11 +48,12 @@ def arguments_post_process(args):
         ch_num = len(args.channels)
 
         # Train on MusicNet
-        if feature_type == "MusicNet":
+        if dataset_type == "MusicNet":
             # Input parameters
             if args.no_harmonic == True:
                 ch_num = 2
                 args.channels = [0, 6] # Spec. and Ceps. channel
+                #args.channels = [1, 3] # For train on maestro
                 feature_type  = "CFP"
             else:
                 ch_num = Harmonic_Num * 2
@@ -64,7 +65,7 @@ def arguments_post_process(args):
             else:
                 out_classes = 12
         # Train on MAPS
-        elif feature_type == "MAPS":
+        elif dataset_type == "MAPS":
             base_path = args.MAPS_feature_path
             out_classes = 2
             dataset_type = "MAPS"
@@ -74,7 +75,8 @@ def arguments_post_process(args):
         # Create new model
         model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=args.window_width,
                     out_class=out_classes)
-
+        
+        path = os.path.join("./model", args.output_model_name)
         # Save model and configurations
         if not os.path.exists(path):
             os.makedirs(path)

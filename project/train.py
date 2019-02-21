@@ -22,7 +22,14 @@ def generator_audio2(batch_size,
     Y = label[:]
     data = load_hdf(data_path[0], inplace=use_ram)
     
-    
+    # Small hack for maestro dataset
+    val_data = load_hdf(data_path[1])
+    len_train = len(data)
+    len_val = len(val_data)
+
+    for i in range(len_val):
+        data.append(val_data[i])
+    # end of hack
 
     
     # Set chorale_indices
@@ -46,7 +53,7 @@ def generator_audio2(batch_size,
 
     batch = 0
     while True:
-        chorale_index = np.random.choice(chorale_indices)
+        chorale_index = np.random.choice(chorale_indices) # Select piece
         chorale_length = min(len(Y[chorale_index]), len(data[chorale_index]))
 
         time_index = np.random.randint(0, chorale_length - timesteps)
@@ -187,8 +194,27 @@ def train_audio(model,
                 mpe_only=False):
     
     label = load_data(label_path)
-
     
+    """
+    # small hack for maestro dataset
+    val_path = "/media/whitebreeze/本機磁碟/maestro-v1.0.0/feature_val"
+    
+    distinct_file = set()
+    with open(os.path.join(val_path, "SongList.csv"), newline='') as config:
+        reader = csv.DictReader(config)
+        for row in reader:
+            distinct_file.add(row["File name"])
+    valf_path = [ff for ff in distinct_file]
+    val_label_path   = [i+"_label.pickle" for i in valf_path]
+    valf_path = [i+".hdf" for i in valf_path]
+    valf_path = [os.path.join(val_path, dp) for dp in valf_path] 
+    val_label_path   = [os.path.join(val_path, lp) for lp in val_label_path]
+    val_label = load_data(val_label_path)
+
+    dataset_path = [dataset_path, valf_path]
+    label = np.concatenate([label, val_label])
+    # end hack
+    """
 
     generator_train = (({'input_score_48': features_48,
                          'input_score_12': features_12

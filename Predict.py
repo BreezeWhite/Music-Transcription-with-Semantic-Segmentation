@@ -149,11 +149,13 @@ def FullTest(model_path, test_path,
         labels = []
         for ff in features:
             ext = ff[ff.rfind("."):]
-            if ext != ".hdf":
+            if ext!=".hdf" and ext!=".pickle":
                 continue
-            if "_label" not in ff:
-                ll = ff[:ff.rfind(".")] + "_label.pickle"
-                labels.append(ll)
+
+            ll = ff[(ff.rfind("/")+1):]
+            if "_label" not in ll:
+                ll = ll[:ll.rfind(".")] + "_label.pickle"
+            labels.append(os.path.join(label_path, ll))
         labels = load_files(labels, use_ram=use_ram)
 
     features = load_files(features, use_ram=use_ram)
