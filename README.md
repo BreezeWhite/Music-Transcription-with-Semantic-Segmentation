@@ -1,4 +1,4 @@
-```
+
 # Music Transcription with Semantic Model
 
 ## About
@@ -49,9 +49,9 @@ We used semantic segmentation model for transcription, which is also widely used
 
    for MusicNet, `cd MusicNet/`  and execute this command:
 
-   ```
+```
    python3 FeatureExtraction.py --MusicNet-path <path/to/downloaded/folder>
-   ```
+```
 
    for MAPS, `cd MAPS/` and execute this command:
 
@@ -73,10 +73,10 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   To train the model on MusicNet, run the command:
 
-  ```
+   ```
   python3 TrainSemanticModel.py --MusicNet-feature-path <path/to/extracted/feature> \
                                 -o <output/model/name>
-  ```
+   ```
 
   The default case will train on **multi-instrument mode** by using **HCFP** features. You can train on MPE mode by adding `--mpe-only` flag, or change to use CFP feature by adding `--no-harmonic` flag.
 
@@ -94,16 +94,16 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
 After training has been done, you can generate the predictions now.
 
-​```
+```python
 python3 Predict.py --model-path <path/to/model> \
                    --test-path <test/feature/path>
-​```
+```
 
 The flag `--test-path` can both be a directory or a *.hdf* feature file. If is a directory, then all the files inside this dir will be processed. 
 
-If you want to evaluate on the predictions after finished this command, add                                                `--label-path <path/to/test/label>` to generate and preserve the corresponding label files.
+If you want to evaluate on the predictions after finished this command, add `--label-path <path/to/test/label>` to generate and preserve the corresponding label files.
 
-The predictions will automatically be saved as a *.hdf* file. You can specify the save path by adding           `--pred-save-path <path/to/save>`.
+The predictions will automatically be saved as a *.hdf* file. You can specify the save path by adding `--pred-save-path <path/to/save>`.
 
 If your ram is not big enough, add `--use-ram False`.
 
@@ -113,9 +113,9 @@ There are also some pre-trained model appended in *CheckPoint* folder. You can s
 
 To evaluate the scores of the predictions with label, run the command:
 
-​```
+```python
 python3 Evaluation.py --test-pred-path <path/to/predictions>
-​```
+```
 
 Because the final results are depending the setting of threshold, you would need a validation set to fairly set the threshold. Add `--val-pred-path <path/to/val/predictions>`, and don't forget to generate the predictions first. If this flag is not given, the threshold will be set depending the test set.
 
@@ -170,5 +170,5 @@ Notice that if turn on both `--quantize` and `--spec-instrument` to print out so
 - [x] Add single-song-test function
 - [x] Add function to print out piano rolls
 - [ ] Add configuration of thresholds to the model
-```
+
 
