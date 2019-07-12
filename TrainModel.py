@@ -4,11 +4,12 @@ import argparse
 
 from project.utils import load_model, save_model, model_info
 from project.configuration import Harmonic_Num
-from project.model import seg, sparse_loss
+from project.Models.model import seg, sparse_loss
+from project.Models import model_attn
 from project.Dataflow import DataFlows
 
 from keras import callbacks
-
+import tensorflow as tf
 
 dataset_paths = {"Maestro":  "/media/whitebreeze/本機磁碟/maestro-v1.0.0",
                  "MusicNet": "/media/whitebreeze/本機磁碟/MusicNet",
@@ -41,6 +42,7 @@ def train(model,
 
     return model
 
+
 def main(args):
     if args.dataset not in dataflow_cls:
         raise TypeError
@@ -66,7 +68,7 @@ def main(args):
     feature_type = "CFP"
     
     # Number of output classes
-    out_classes = 2
+    out_classes = 3
 
     # Output model name
     out_model_name = args.output_model_name
@@ -123,8 +125,10 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                    out_class=out_classes)
+        #model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #            out_class=out_classes)
+        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                               out_class=out_classes)
         
         out_model_name = os.path.join(default_model_path, out_model_name)
         # Save model and configurations
@@ -175,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
                         action="store_true")
     parser.add_argument("-t", "--timesteps", help="Time width for each input feature (default: %(default)d)",
-                        type=int, default=256)
+                        type=int, default=128)
     
     # Arguments about the training progress
     parser.add_argument("-e", "--epoch", help="Number of epochs to train (default: %(default)d)",
@@ -186,7 +190,7 @@ if __name__ == "__main__":
                         type=int, default=500)
     parser.add_argument("-i", "--input-model", help="If given, then will continue to train on a pre-trained model")
     parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase (default: %(default)d)",
-                        type=int, default=16)
+                        type=int, default=8)
     parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase (default: %(default)d)",
                         type=int, default=16)
     parser.add_argument("--early-stop", help="Early stop the training after given # epochs",

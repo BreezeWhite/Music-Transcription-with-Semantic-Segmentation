@@ -63,7 +63,7 @@ def generator_audio2(batch_size,
 
         label = Y[chorale_index][time_index: time_index+timesteps]
         if dataset_type=="MusicNet":
-            label = label_conversion(label, 384, timesteps, mpe=mpe_only)
+            label = label_conversion(label, 384, timesteps, mpe=mpe_only)#, onsets=True)
         else:
             label = to_categorical(label, num_classes=2)
 
@@ -195,7 +195,7 @@ def train_audio(model,
     
     label = load_data(label_path)
     
-    """
+    #"""
     # small hack for maestro dataset
     val_path = "/media/whitebreeze/本機磁碟/maestro-v1.0.0/feature_val"
     
@@ -214,7 +214,7 @@ def train_audio(model,
     dataset_path = [dataset_path, valf_path]
     label = np.concatenate([label, val_label])
     # end hack
-    """
+    #"""
 
     generator_train = (({'input_score_48': features_48,
                          'input_score_12': features_12
@@ -225,8 +225,8 @@ def train_audio(model,
                             features_12,
                             labels
                             ) in generator_audio2(batch_size, timesteps, dataset_path, label, 
-                                          channels=channels, dataset_type=dataset_type, use_ram=use_ram,
-                                          mpe_only=mpe_only))
+                                                  channels=channels, dataset_type=dataset_type, use_ram=use_ram,
+                                                  mpe_only=mpe_only))
     
     generator_val = (({'input_score_48': features_48,
                        'input_score_12': features_12
@@ -237,8 +237,8 @@ def train_audio(model,
                           features_12,
                           labels
                           ) in generator_audio2(batch_size, timesteps, dataset_path, label,
-                                        phase='test', channels=channels, dataset_type=dataset_type, use_ram=use_ram,
-                                        mpe_only=mpe_only))
+                                                phase='test', channels=channels, dataset_type=dataset_type, use_ram=use_ram,
+                                                mpe_only=mpe_only))
 
     model.fit_generator(generator_train, steps_per_epoch=steps,
                         epochs=epoch, verbose=1, validation_data=generator_val,

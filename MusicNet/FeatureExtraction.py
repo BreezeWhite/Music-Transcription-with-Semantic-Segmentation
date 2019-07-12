@@ -6,8 +6,8 @@ import argparse
 import numpy as np
 import soundfile as sf
 
-from ProcessLabels import manage_label_process
-from MelodyExt import feature_extraction
+from MusicNet.ProcessLabels import manage_label_process
+from MusicNet.MelodyExt import feature_extraction
 
 
 def fetch_harmonic(data, cenf, ith_har, 

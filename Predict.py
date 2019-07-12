@@ -41,6 +41,7 @@ def predict(feature,
             full_predict=True, 
             MAX_FRAME=9000,
             channels=[0],
+            timesteps=128,
             instruments=1):
     
     original_v = True if threshold==None else False
@@ -66,6 +67,7 @@ def predict(feature,
 
             tmp_pred = inference(feature = sub_feature[:, :, channels],
                                  model = model,
+                                 timestep=timesteps,
                                  threshold = threshold,
                                  isMPE = True,
                                  original_v=original_v,
@@ -163,7 +165,7 @@ def FullTest(model_path, test_path,
 
     
     # Validate on model/feature configurations
-    f_type, channels, out_classes = model_info(model_path)
+    f_type, channels, out_classes, timesteps = model_info(model_path)
     
     if f_type=="HCFP" and features[0].shape[2] < 12:
         assert(False), "The model uses HCFP as input feature, but loaded features are not."
@@ -192,7 +194,8 @@ def FullTest(model_path, test_path,
     for i in trange(len_data, desc='Dataset'):
         feature = features[0][:]
         
-        pred = predict(feature, model, MAX_FRAME=MAX_FRAME, channels=list(channels), instruments=out_classes-1)
+        pred = predict(feature, model, MAX_FRAME=MAX_FRAME, channels=list(channels), 
+                       instruments=out_classes-1, timesteps=timesteps)
         
         # Save to output
         pred_out.create_dataset(str(i), data=pred, compression="gzip", compression_opts=5)

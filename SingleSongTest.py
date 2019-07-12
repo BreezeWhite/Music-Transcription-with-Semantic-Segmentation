@@ -5,77 +5,45 @@ sys.path.append("MusicNet/")
 import os
 import argparse
 import numpy as np
+import h5py
 
 from PrintPianoRoll import PLOT
-from Predict import model_info, predict
 from MusicNet.FeatureExtraction import fetch_harmonic
-from Evaluation import peak_picking
+#from Evaluation import peak_picking
+from project.postprocess import PostProcess
+from project.Evaluate.predict import predict
 
-from project.utils import load_model
+from project.utils import load_model, to_midi, model_info
 from project.MelodyExt import feature_extraction
 from project.configuration import MusicNet_Instruments
 
-
-"""
-def get_file_by_size(directory, num=0):
+def create_batches(feature, b_size, timesteps, feature_num=384):
+    frms = np.ceil(len(feature) / timesteps)
+    bss = np.ceil(frms / b_size).astype('int')
     
-    # Get all files.
-    list = os.listdir(directory)
+    pb = (feature_num-feature.shape[1]) // 2
+    pt = feature_num-feature.shape[1]-pb
+    l = len(feature)
+    ch = feature.shape[2]
+    pbb = np.zeros((l, pb, ch))
+    ptt = np.zeros((l, pt, ch))
+    feature = np.hstack([pbb, feature, ptt])
 
-    # Loop and add files to list.
-    pairs = []
-    for file in list:
-
-        # Use join to get full file path.
-        location = os.path.join(directory, file)
-
-        # Get size and add to list of tuples.
-        size = os.path.getsize(location)
-        pairs.append((size, location))
-
-    # Sort list of tuples by the f
-    pairs.sort(key=lambda s: s[0])
+    BSS = []
+    for i in range(bss):
+        bs = np.zeros((b_size, timesteps, feature.shape[1], feature.shape[2]))
+        for ii in range(b_size):
+            start_i = i*b_size*timesteps + ii*timesteps
+            if start_i >= len(feature):
+                break
+            end_i = min(start_i+timesteps, len(feature))
+            length = end_i - start_i
+            
+            part = feature[start_i:start_i+length]
+            bs[ii, 0:length] = part
+        BSS.append(bs)
     
-    return pairs[num][1]
-    
-def single_song_test():
-    test_path = "/media/whitebreeze/本機磁碟/maps/DATASET_Train/wav"
-    
-    test_audio = get_file_by_size(test_path, 2)
-
-    feature = feature_extraction(test_audio)
-    feature = np.transpose(feature[0:4], axes=(2, 1, 0))
-    
-    
-
-    model = load_model("./onsets_model")
-
-    print(feature[:, :, 0].shape)
-    extract_result = inference(feature= feature[:, :, 0],
-                               model = model,
-                               batch_size=10, 
-                               isMPE = True,
-                               original_v = True).transpose()
-
-    
-    print("Average: {}".format(np.mean(extract_result)))
-    result = []
-    result.append(np.where(extract_result>0.3, 1, 0))
-    result.append(np.where(extract_result>0.4, 1, 0))
-    #result.append(np.where(extract_result>MAX_V*0.5, 1, 0))
-    result.append(roll_down_sample(result[-1].transpose()).transpose())
-    
-    fig, ax = plt.subplots(nrows=len(result))
-    ax[0].imshow(result[0], aspect='auto', origin='lower', cmap="PuBuGn")
-    ax[1].imshow(result[1], aspect='auto', origin='lower', cmap="OrRd")
-    ax[2].imshow(result[2], aspect='auto', origin='lower', cmap="RdPu")
-    plt.show()
-    plt.savefig('./result.png', box_inches='tight', dpi=250)
-    
-    return centFreq
-    
-"""
-
+    return BSS
 
 def main(args):
     # Pre-process features
@@ -84,7 +52,7 @@ def main(args):
     Z, tfrL0, tfrLF, tfrLQ, t, cenf, f = feature_extraction(args.input_audio)
     
     # Post-process feature according to the configuration of model
-    feature_type, channels, out_class = model_info(args.model_path)
+    feature_type, channels, out_class, timesteps = model_info(args.model_path)
     if feature_type == "HCFP":
         assert(len(channels) == (args.num_harmonics*2+2))
         
@@ -103,42 +71,22 @@ def main(args):
         
         feature = np.array([Z, tfrL0, tfrLF, tfrLQ])
         feature = np.transpose(feature, axes=(2, 1, 0))
-
+    
+    feature = create_batches(feature[:,:,channels], b_size=16, timesteps=timesteps)
     model = load_model(args.model_path)
     
 
     print("Predicting...")
-    pred = predict(feature, model,
-                   channels=channels,
-                   instruments=out_class-1)
+    pred = predict(feature, model)
+    
+    p_out = h5py.File("pred.hdf", "w")
+    p_out.create_dataset("0", data=pred)
+    p_out.close()
 
-    for i in range(pred.shape[2]):
-        pred[:,:88,i] = peak_picking(pred[:,:,i])
-    pred = pred[:,:88]
-
+    notes, midi = PostProcess(pred)
     
-    # Print figure
-    base_path = args.input_audio[:args.input_audio.rfind("/")]
-    save_name = os.path.join(base_path, args.output_fig_name)
-    
-    plot_range = range(500, 1500)
-    if max(plot_range) > len(pred):
-        plot_range = range(0, len(pred))
-    pred = pred[plot_range]
-    
-    if out_class >= 11:
-        assert(out_class==12), "There is something wrong with the configuration. \
-                                Expected value: 12, Current value: {}".format(out_class)
-        titles = MusicNet_Instruments
-    else:
-        assert(out_class==2), "There is something wrong with the configuration. \
-                               Expected value: 2, Current value: {}".format(out_class)
-        titles = ["Piano"]
-    
-    print("Ploting figure...")
-    PLOT(pred, save_name, plot_range, titles=titles)
-    print("Output figure to {}".format(base_path))
-
+    if args.to_midi is not None:
+        midi.write(args.to_midi)
 
 if __name__ == "__main__":
     
@@ -152,6 +100,8 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output-fig-name",
                         help="Name of transcribed figure of piano roll to save.",
                         type=str, default="Piano Roll")
+    parser.add_argument("--to-midi", help="Also output the transcription result to midi file.",
+                        type=str)
     args = parser.parse_args()
     args.num_harmonics = 5
     

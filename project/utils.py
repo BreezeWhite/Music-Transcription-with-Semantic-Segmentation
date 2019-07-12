@@ -4,16 +4,73 @@ import csv
 import h5py
 import pickle
 import numpy as np
+import pretty_midi
+import librosa
 
 from scipy.special import expit
 from project.configuration import get_MusicNet_label_num_mapping, get_instruments_num, MusicNet_Instruments
 from keras.models import model_from_json, model_from_yaml
 from mir_eval import melody
 
+from keras import layers as L
+from tensor2tensor.layers.common_attention import local_attention_2d, split_heads_2d, combine_heads_2d
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 TIMESTEP = 128
 SUBDIVISION = 8
 
+def merge_channels(data):
+    if len(data.shape)==2:
+        return data
+
+    assert(len(data.shape)==3)
+    return np.max(data, axis=2)
+    
+
+def to_midi(pred, out_path, velocity=100, threshold=0.4, t_unit=0.02):
+    midi = pretty_midi.PrettyMIDI()
+    piano = pretty_midi.Instrument(program=0) 
+    
+    notes = []
+    pred = np.where(pred>threshold, 1, 0)   
+    pred = merge_channels(pred)
+    pitch_offset = librosa.note_to_midi("A0")
+    #print("Transformed shape: ", pred.shape)
+    
+    plt.imshow(pred.transpose(), origin="lower", aspect=20)
+    plt.savefig("{}.png".format(out_path), dpi=250)
+    
+    for i in range(pred.shape[1]):
+        pp = pred[:, i]
+        candy = np.where(pp > 0.5)[0]
+        if len(candy) == 0:
+            # No pitch present
+            continue
+        
+        shift = np.insert(candy, 0, 0)[:-1]
+        diff = candy - shift
+        on_idx = np.where(diff>1)[0]
+        onsets = candy[on_idx]
+        offsets = shift[on_idx[1:]]
+        offsets = np.append(offsets, candy[-1])
+
+        for ii in range(len(onsets)):
+            on_t = onsets[ii] * t_unit
+            off_t = offsets[ii] * t_unit
+            note = pretty_midi.Note(velocity=velocity, pitch=i+pitch_offset, start=on_t, end=off_t)
+            notes.append(note)
+
+    piano.notes = notes
+    midi.instruments.append(piano)
+
+    if not out_path.endswith(".mid"):
+        out_path += ".mid"
+    midi.write(out_path)
+
+    return midi
 
 def freq2midi(f):
     return 69 + 12*np.log2(f/440)
@@ -236,8 +293,17 @@ def load_model(model_path):
 
 
     """
-    full_path = os.path.join(model_path, "arch.yaml")
-    model = model_from_yaml(open(full_path).read())
+    #full_path = os.path.join(model_path, "arch.yaml")
+    #model = model_from_yaml(open(full_path).read())
+    custom_layers = {
+        "Conv2D": L.Conv2D,
+        "split_heads_2d": split_heads_2d,
+        "local_attention_2d": local_attention_2d,
+        "combine_heads_2d": combine_heads_2d
+    }
+    model = model_from_yaml(open(os.path.join(model_path, "arch.yaml")).read(), custom_objects=custom_layers)
+
+
     full_path = os.path.join(model_path, "weights.h5")
     model.load_weights(full_path)
 
@@ -245,7 +311,7 @@ def load_model(model_path):
     return model
 
 
-def save_model(model, model_path, feature_type="CFP", input_channels=[1, 3], output_classes=2):
+def save_model(model, model_path, feature_type="CFP", channels=[1, 3], output_classes=2, timesteps=128):
     # SAVE MODEL
     string = model.to_yaml()
     full_path = os.path.join(model_path, "arch.yaml")
@@ -254,10 +320,10 @@ def save_model(model, model_path, feature_type="CFP", input_channels=[1, 3], out
     full_path = os.path.join(model_path, "configuration.csv")
     with open(full_path, "w", newline='') as config:
         writer = csv.writer(config)
-        writer.writerow(["Model name", "Feature type", "Input channels", "Output classes"])
+        writer.writerow(["Model name", "Feature type", "Input channels", "Output classes", "Timesteps"])
         
         model_name = model_path[model_path.rfind("/")+1:]
-        writer.writerow([model_name, feature_type, input_channels, output_classes])
+        writer.writerow([model_name, feature_type, channels, output_classes, timesteps])
     
     print("model " + model_name + " saved")
 
@@ -266,12 +332,13 @@ def model_info(model_path):
     with open(config_file, "r", newline='') as config:
         reader = csv.DictReader(config)
         row = next(iter(reader))
-        f_type, channels, out_classes = row["Feature type"], row["Input channels"], row["Output classes"]
+        f_type, channels, out_classes, timesteps = row["Feature type"], row["Input channels"], row["Output classes"], row["Timesteps"]
         
         channels = ast.literal_eval(channels)
         out_classes = int(out_classes)
+        timesteps = int(timesteps)
         
-    return f_type, channels, out_classes
+    return f_type, channels, out_classes, timesteps
 
 def model_copy(origin, target):
 

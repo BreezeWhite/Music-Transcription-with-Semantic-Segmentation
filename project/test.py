@@ -74,7 +74,9 @@ def inference(feature,
     del f_48_s, f_12_s
 
     # Filter values by threshold
-    extract_result_seg = extract_result_seg_flatten[timestep:-timestep, p_t:-p_b, 1:]
+    #extract_result_seg = extract_result_seg_flatten[timestep:-timestep, p_t:-p_b, 1:]
+    extract_result_seg = extract_result_seg_flatten[timestep:-timestep, p_t:-p_b]
+
     del extract_result_seg_flatten
     
     avg = 0

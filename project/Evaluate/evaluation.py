@@ -4,7 +4,7 @@ import mir_eval
 from project.Evaluate.eval_utils import gen_frame_info, gen_onsets_info
 
 
-def evaluate_onsets(pred, label):
+def evaluate_onsets(pred, label, t_unit=0.02):
     # The input pred should be thresholded
 
     est_interval, est_hz = gen_onsets_info(pred, t_unit=t_unit)
@@ -16,7 +16,7 @@ def evaluate_onsets(pred, label):
 
     return precision, recall, fscore
 
-def evaluate_frame(pred, label):
+def evaluate_frame(pred, label, t_unit=0.02):
     # The input pred should be thresholded
 
     est_time, est_hz = gen_frame_info(pred, t_unit) 
