@@ -1,6 +1,10 @@
 
+#from project.Dataflow.DataFlows import Maestro, MusicNet
 
-MusicNet_Instruments = ["Piano", "Harpsichord", "Violin", "Viola", "Cello", "Contrabass", "Horn", "Oboe", "Bassoon", "Clarinet", "Flute"]
+
+
+MusicNet_Instruments = ["Piano", "Harpsichord", "Violin", "Viola", "Cello", "Contrabass", 
+                        "Horn", "Oboe", "Bassoon", "Clarinet", "Flute"]
 Harmonic_Num = 6
 
 def get_MusicNet_label_num_mapping(offset=1, spec_inst=None):

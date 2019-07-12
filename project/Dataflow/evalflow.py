@@ -14,7 +14,7 @@ class EvalFlow:
         
         common_shape = (self.df.b_sz, self.df.timesteps, self.df.feature_num)
         self.d_buffer = np.zeros(common_shape + (len(self.df.channels),))
-        self.l_buffer = np.zeros(common_shape + (2 if self.df.mpe_only else 12, ))
+        self.l_buffer = np.zeros(common_shape + (4 if self.df.mpe_only else 12, ))
         
         self.cur_iid = 0
         
@@ -39,7 +39,7 @@ class EvalFlow:
             x, y = self.df.get_feature(self.cur_pid, tid)
 
             self.d_buffer[ii] = x
-            self.l_buffer[ii] = y[:,:,:2]
+            self.l_buffer[ii] = y
         self.cur_iid += len(frms)
 
         if self.cur_iid >= len(self.idxs):

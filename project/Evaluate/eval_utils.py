@@ -1,7 +1,41 @@
 
+import os
+import h5py
 import numpy as np
 
 from project.central_frequency_352 import CentralFrequency
+
+
+def roll_down_sample(data, occur_num=3, base=88):
+    # The input argument "data" should be thresholded 
+
+    total_roll = data.shape[1]
+    assert total_roll % base == 0, "Wrong length: {}, {} % {} should be zero!".format(total_roll, total_roll, base)
+    
+    scale = round(total_roll/base)
+    assert(occur_num>0 and occur_num<scale)
+    
+    
+    return_v = np.zeros((len(data), base), dtype=int)
+    
+    for i in range(0, data.shape[1], scale):
+        total = np.sum(data[:, i : i+scale], axis=1)
+        return_v[:, int(i/scale)] = np.where(total>=occur_num, total/occur_num, 0)
+    return_v = np.where(return_v>1, 1, return_v)
+        
+    return return_v
+
+def save_pred(preds, labels, out_path):
+    ff = h5py.File(os.path.join(out_path, "pred.hdf"), "w")
+    ll = h5py.File(os.path.join(out_path, "label.hdf"), "w")
+
+    for i in range(len(preds)):
+        ff.create_dataset(str(i), data=preds[i], compression="gzip", compression_opts=5)
+        ll.create_dataset(str(i), data=labels[i], compression="gzip", compression_opts=5)
+
+    ff.close()
+    ll.close()
+
 
 def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     min_duration = max(t_unit, min_duration)
@@ -45,7 +79,7 @@ def gen_onsets_info(data, t_unit=0.02):
     return intervals, pitches
 
 def gen_frame_info(data, t_unit=0.02):
-
+    
     t_idx, r_idx = np.where(data>0.5)
     #print("Length of estimated notes: ", len(t_idx))
     if len(t_idx) == 0:

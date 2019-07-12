@@ -46,7 +46,7 @@ def conv_block(input_tensor,
                channel, kernel_size,
                strides=(2, 2),
                dilation_rate=1,
-               dropout_rate=0.2
+               dropout_rate=0.4
                ):
 
     skip = input_tensor

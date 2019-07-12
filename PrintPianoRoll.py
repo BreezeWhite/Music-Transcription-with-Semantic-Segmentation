@@ -144,7 +144,7 @@ def PLOT(data, save_name, plot_range, titles=None, color_map="terrain"):
         axes = [axes]
     
     for i, ax in enumerate(axes):
-        ax.imshow(data[:,:,i].transpose(), aspect='auto', origin='lower', cmap=color_map)
+        ax.imshow(data[:,:,i].transpose(), aspect=20, origin='lower', cmap=color_map)
     
     
     interval_num = 5
