@@ -48,9 +48,9 @@ We used semantic segmentation model for transcription, which is also widely used
 
    for MusicNet, `cd MusicNet/`  and execute this command:
 
-   ```
+```
    python3 FeatureExtraction.py --MusicNet-path <path/to/downloaded/folder>
-   ```
+```
 
    for MAPS, `cd MAPS/` and execute this command:
 
@@ -74,9 +74,10 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   ```
   python3 TrainModel.py MusicNet \
-  					    --dataset-path <path/to/extracted/feature> \ 
+                        --dataset-path <path/to/extracted/feature> \ 
                         -o <output/model/name>
   ```
+
 
   The default case will train on **MPE** by using **CFP** features. You can train on multi-instrument mode by adding `--multi-instruments` flag, or change to use HCFP feature by adding `--use-harmonic` flag.
 
@@ -94,7 +95,7 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
 ##### *NOTICE: For a whole and complete evaluation process, please check the version 1 code in **v1** folder.*
 
-To predict and evaluate the scores with label, run the command:​
+To predict and evaluate the scores with label, run the command:
 
 ```
 python3 Evaluation.py  MusicNet \
@@ -123,9 +124,9 @@ To get the predicted midi, add `--to-midi <path/to/store/midi>` flag. The midi w
 
 To print out the predictions as images, like above shown, run the command:
 
-​```
+```
 python3 PrintPianoRoll.py -p <path/to/prediction>
-​```
+```
 
 The path to the folder should containing *pred.hdf* and *label.hdf*. For each figure, there will at most 4 rows, and two as a group, presenting prediction row and label row to the same piece. If there is no *label.hdf* file, the label row would be the same as prediction row.
 
