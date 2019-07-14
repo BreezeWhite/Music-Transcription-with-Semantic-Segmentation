@@ -13,7 +13,7 @@ from MusicNet.FeatureExtraction import fetch_harmonic
 from project.postprocess import PostProcess
 from project.Evaluate.predict import predict
 
-from project.utils import load_model, to_midi, model_info
+from project.utils import load_model, model_info
 from project.MelodyExt import feature_extraction
 from project.configuration import MusicNet_Instruments
 
