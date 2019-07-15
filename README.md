@@ -15,6 +15,7 @@ For whom would interested in more technical details, the original paper is [here
 
 * [About](#About)
 * [Overview](#overview)
+* [Install Dependencies](#installation)
 * [Usage](#Usage)
   * [Pre-processing](#pre-processing)
   * [Training](#training)
@@ -37,6 +38,13 @@ The top row is the predicted piano roll, and the bottom row is the original labe
 We used semantic segmentation model for transcription, which is also widely used in the field of image processing.  This model is originally improved from DeepLabV3+, and further combined with U-net architecture and focal loss, Illustrated as below: 
 
 ![model](./figures/ModelArch.png)
+
+## Installation
+To install the requirement, enter the following command:
+
+```
+    python3 setup.py install
+```
 
 ## Usage
 
