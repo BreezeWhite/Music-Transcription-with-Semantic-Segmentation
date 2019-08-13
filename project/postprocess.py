@@ -267,12 +267,12 @@ def PostProcess(pred):
     # Normalize along each channel and filter by the nomalized value
     # onset channel
     onset = (onset-np.mean(onset))/np.std(onset)
-    onset = np.where(onset<4, 0, onset)
+    onset = np.where(onset<3, 0, onset)
     pred[:,:,2] = onset
     
     # duration channel
     dura = (dura-np.mean(dura))/np.std(dura)
-    dura = np.where(dura<0, 0, dura)
+    dura = np.where(dura<2, 0, dura)
     pred[:,:,1] = dura
     
     notes = infer_piece(down_sample(pred))
