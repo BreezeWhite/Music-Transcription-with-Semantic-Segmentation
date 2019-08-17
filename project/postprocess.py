@@ -262,12 +262,12 @@ def PostProcess(pred):
     onset = pred[:,:,2]
     dura = pred[:,:,1]
     
-    #onset = np.where(onset<dura, 0, onset)
+    onset = np.where(onset<dura, 0, onset)
     
     # Normalize along each channel and filter by the nomalized value
     # onset channel
     onset = (onset-np.mean(onset))/np.std(onset)
-    onset = np.where(onset<3, 0, onset)
+    onset = np.where(onset<6, 0, onset)
     pred[:,:,2] = onset
     
     # duration channel
@@ -283,23 +283,10 @@ def PostProcess(pred):
         
         
 if __name__ == "__main__":
-    f_name = "pred_angel_beats.hdf"
-    f_name = "pred_onset_dura.hdf"
-    #f_name = "pred_frame_overlap.hdf"
-    f_name = "pred_onset_dura_sword.hdf"
-    f_name = "pred_brave_song.hdf"
     f_name = "pred.hdf"
     p_in = h5py.File("HDF/"+f_name, "r")
     pred = p_in["0"][:]
     p_in.close()
-    
-    """
-    f_name = "pred_frame_sword.hdf"
-    p_in = h5py.File("HDF/"+f_name, "r")
-    frm = p_in["0"][:]
-    p_in.close()
-    pred[:,:,1] = frm[:,:,1]
-    """
     
     pp = pred#[16744:22000]
     midi = PostProcess(pp)
