@@ -1,4 +1,4 @@
-```
+
 # Music Transcription with Semantic Model
 
 ## About
@@ -170,5 +170,5 @@ Notice that if turn on both `--quantize` and `--spec-instrument` to print out so
 - [x] Add single-song-test function
 - [x] Add function to print out piano rolls
 - [ ] Add configuration of thresholds to the model
-```
+
 
