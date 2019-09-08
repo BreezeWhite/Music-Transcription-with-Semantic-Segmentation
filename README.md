@@ -12,7 +12,7 @@ This work was done based on our prior work of [repo1](https://github.com/BreezeW
 For whom would interested in more technical details, the original paper is [here](https://ieeexplore.ieee.org/abstract/document/8682605).
 
 #### Colab
-We have also provide a [colab](https://colab.research.google.com/drive/1U6FxnQoeENZRcTRAg4DzjKYM7ZNPGTks?hl=en#offline=true&sandboxMode=true) for quick starting. Just run through each block and upload your .mp3 piano recording, then enjoy.
+We have also provide a [colab](http://bit.ly/transcribe-colab) for quick starting. Just run through each block and upload your .mp3 piano recording, then enjoy.
 
 
 ## Table of Contents
