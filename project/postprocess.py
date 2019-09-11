@@ -267,7 +267,7 @@ def PostProcess(pred):
     # Normalize along each channel and filter by the nomalized value
     # onset channel
     onset = (onset-np.mean(onset))/np.std(onset)
-    onset = np.where(onset<6, 0, onset)
+    onset = np.where(onset<5, 0, onset)
     pred[:,:,2] = onset
     
     # duration channel
