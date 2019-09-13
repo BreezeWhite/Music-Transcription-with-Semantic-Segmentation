@@ -9,7 +9,6 @@ import h5py
 
 from PrintPianoRoll import PLOT
 from MusicNet.FeatureExtraction import fetch_harmonic
-#from Evaluation import peak_picking
 from project.postprocess import PostProcess
 from project.Evaluate.predict import predict
 
@@ -72,7 +71,7 @@ def main(args):
         feature = np.array([Z, tfrL0, tfrLF, tfrLQ])
         feature = np.transpose(feature, axes=(2, 1, 0))
     
-    feature = create_batches(feature[:,:,channels], b_size=16, timesteps=timesteps)
+    feature = create_batches(feature[:,:,channels], b_size=4, timesteps=timesteps)
     model = load_model(args.model_path)
     
 
@@ -83,7 +82,7 @@ def main(args):
     p_out.create_dataset("0", data=pred)
     p_out.close()
 
-    notes, midi = PostProcess(pred)
+    midi = PostProcess(pred)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)

@@ -173,12 +173,11 @@ def infer_piece(piece):
     """
     assert(piece.shape[1] == 88), "Please down sample the pitch to 88 first (current: {}).format(piece.shape[1])"
     t_unit = 0.02 # constant, do not modify
-    
-    min_align_diff = 2 # to align the onset between notes with a short time difference 
+    min_align_diff = 1 # to align the onset between notes with a short time difference 
     
     notes = []
     for i in range(88):
-        print("Pitch: {}/{}".format(i+1, 88))
+        print("Pitch: {}/{}".format(i+1, 88), end="\r")
         
         pitch = piece[:,i]
         if np.sum(pitch) <= 0:
@@ -258,28 +257,22 @@ def down_sample(pred):
 
     return dd
 
-def PostProcess(pred):    
+def PostProcess(pred):
+    onset = pred[:,:,2]
+    dura = pred[:,:,1]
+    
+    onset = np.where(onset<dura, 0, onset)
     
     # Normalize along each channel and filter by the nomalized value
     # onset channel
-    ch = pred[:,:,2]
-    ch = (ch-np.mean(ch))/np.std(ch)
-    ch = np.where(ch<4, 0, ch)
-    pred[:,:,2] = ch
-    
-    """
-    # offset channel
-    ch = pred[:,:,3]
-    ch = (ch-np.mean(ch))/np.std(ch)
-    ch = np.where(ch<3, 0, ch)
-    pred[:,:,3] = ch
-    """
+    onset = (onset-np.mean(onset))/np.std(onset)
+    onset = np.where(onset<5, 0, onset)
+    pred[:,:,2] = onset
     
     # duration channel
-    ch = pred[:,:,1]
-    ch = (ch-np.mean(ch))/np.std(ch)
-    ch = np.where(ch<0, 0, ch)
-    pred[:,:,1] = ch
+    dura = (dura-np.mean(dura))/np.std(dura)
+    dura = np.where(dura<2, 0, dura)
+    pred[:,:,1] = dura
     
     notes = infer_piece(down_sample(pred))
     midi = to_midi(notes)
@@ -287,25 +280,11 @@ def PostProcess(pred):
     return midi
         
         
-        
 if __name__ == "__main__":
-    f_name = "pred_angel_beats.hdf"
-    f_name = "pred_onset_dura.hdf"
-    #f_name = "pred_frame_overlap.hdf"
-    f_name = "pred_onset_dura_sword.hdf"
-    f_name = "pred_brave_song.hdf"
     f_name = "pred.hdf"
     p_in = h5py.File("HDF/"+f_name, "r")
     pred = p_in["0"][:]
     p_in.close()
-    
-    """
-    f_name = "pred_frame_sword.hdf"
-    p_in = h5py.File("HDF/"+f_name, "r")
-    frm = p_in["0"][:]
-    p_in.close()
-    pred[:,:,1] = frm[:,:,1]
-    """
     
     pp = pred#[16744:22000]
     midi = PostProcess(pp)
