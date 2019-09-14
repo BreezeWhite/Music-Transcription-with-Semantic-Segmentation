@@ -12,37 +12,44 @@ from keras import callbacks
 from keras.utils import multi_gpu_model
 import tensorflow as tf
 
-dataset_paths = {"Maestro":  "/Maestro",
-                 "MusicNet": "/media/whitebreeze/本機磁碟/MusicNet",
-                 "Maps":     "/media/whitebreeze/本機磁碟/maps"}
+dataset_paths = {
+    "Maestro":  "/media/whitebreeze/data/maestro-v1.0.0",
+    "MusicNet": "/media/whitebreeze/data/MusicNet",
+    "Maps":     "/media/whitebreeze/data/maps"
+}
 
-dataflow_cls = {"Maestro":  DataFlows.Maestro,
-                "MusicNet": DataFlows.MusicNet,
-                "Maps":     None}
+dataflow_cls = {
+    "Maestro":  DataFlows.MaestroDataflow,
+    "MusicNet": DataFlows.MusicNetDataflow,
+    "Maps":     Dataflows.MapsDataflow
+}
 
 default_model_path = "./model"
 
 
+def train(
+        model, 
+        generator_train, 
+        generator_val,
+        epoch=1,
+        callbacks=None, 
+        steps=6000, 
+        v_steps=3000
+    ):
 
-def train(model, 
-          generator_train, generator_val,
-          epoch     = 1,
-          callbacks = None, 
-          steps     = 6000, 
-          v_steps   = 3000):
-
-    model.fit_generator(generator_train, 
-                        validation_data  = generator_val,
-                        epochs           = epoch,
-                        steps_per_epoch  = steps,
-                        validation_steps = v_steps,
-                        callbacks        = callbacks,
-                        max_queue_size   = 100,
-                        use_multiprocessing = True,
-                        workers             = 1)
+    model.fit_generator(
+        generator_train, 
+        validation_data=generator_val,
+        epochs=epoch,
+        steps_per_epoch=steps,
+        validation_steps=v_steps,
+        callbacks=callbacks,
+        max_queue_size=100,
+        use_multiprocessing=True,
+        workers=1
+    )
 
     return model
-
 
 def main(args):
     if args.dataset not in dataflow_cls:
@@ -95,7 +102,6 @@ def main(args):
             if args.multi_instruemnts:
                 out_classes = 12 # There are total 11 types of instruments in MusicNet
 
-        
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
@@ -113,12 +119,10 @@ def main(args):
     print("Loading validation data")
     val_df = df_cls(**df_params)
 
-    
     hparams["channels"]       = channels
     hparams["timesteps"]      = timesteps
     hparams["feature_type"]   = feature_type
     hparams["output_classes"] = out_classes
-
     
     print("Creating/loading model")
     # Create model
@@ -142,7 +146,6 @@ def main(args):
     para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
     para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
-
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)
     checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
@@ -158,7 +161,6 @@ def main(args):
           callbacks = callback_list,
           steps     = args.steps,
           v_steps   = args.val_steps)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")
