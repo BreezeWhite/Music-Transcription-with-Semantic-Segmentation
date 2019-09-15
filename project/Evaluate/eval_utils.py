@@ -1,10 +1,55 @@
 
 import os
 import h5py
+import math
+import librosa
+import logging
 import numpy as np
 
+import project.Dataflow.BaseDataflow as bd
 from project.central_frequency_352 import CentralFrequency
 
+
+def create_batches(feature, b_size, timesteps, feature_num=384):
+    frms = np.ceil(len(feature) / timesteps)
+    bss = np.ceil(frms / b_size).astype('int')
+    
+    pb = (feature_num-feature.shape[1]) // 2
+    pt = feature_num-feature.shape[1]-pb
+    l = len(feature)
+    ch = feature.shape[2]
+    pbb = np.zeros((l, pb, ch))
+    ptt = np.zeros((l, pt, ch))
+    feature = np.hstack([pbb, feature, ptt])
+
+    BSS = []
+    for i in range(bss):
+        bs = np.zeros((b_size, timesteps, feature.shape[1], feature.shape[2]))
+        for ii in range(b_size):
+            start_i = i*b_size*timesteps + ii*timesteps
+            if start_i >= len(feature):
+                break
+            end_i = min(start_i+timesteps, len(feature))
+            length = end_i - start_i
+            
+            part = feature[start_i:start_i+length]
+            bs[ii, 0:length] = part
+        BSS.append(bs)
+    
+    return BSS
+
+def label_conversion(label, timesteps):
+    ll = []
+    iters = math.ceil(len(label)/timesteps)
+    for tid in range(iters):
+        ll.append(bd.BaseDataflow.label_conversion(
+            label, 
+            tid*timesteps,
+            timesteps=timesteps,
+            mpe=True
+        ))
+
+    return np.concatenate(ll)
 
 def roll_down_sample(data, occur_num=3, base=88):
     # The input argument "data" should be thresholded 
@@ -56,10 +101,11 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
 
 
 def gen_onsets_info(data, t_unit=0.02):
-    
+    logging.debug("Data shape: %s", data.shape)
     pitches   = []
     intervals = []
-    
+    lowest_pitch = librosa.note_to_midi("A0")
+
     for i in range(data.shape[1]):
         _, it = find_occur(data[:, i], t_unit)
         
@@ -68,7 +114,8 @@ def gen_onsets_info(data, t_unit=0.02):
         elif len(it) > 0:
             intervals = np.concatenate((intervals, np.array(it)), axis=0)
             
-        hz = CentralFrequency[i]
+        # hz = CentralFrequency[i]
+        hz = librosa.midi_to_hz(lowest_pitch+i)
         for i in range(len(it)):
             pitches.append(hz)
     
@@ -79,12 +126,13 @@ def gen_onsets_info(data, t_unit=0.02):
     return intervals, pitches
 
 def gen_frame_info(data, t_unit=0.02):
-    
     t_idx, r_idx = np.where(data>0.5)
     #print("Length of estimated notes: ", len(t_idx))
     if len(t_idx) == 0:
         return np.array([]), []
-    f_idx = np.array(CentralFrequency)[r_idx]
+    #f_idx = np.array(CentralFrequency)[r_idx]
+    freq = [librosa.midi_to_hz(21+i) for i in range(88)]
+    f_idx = np.array(freq)[r_idx]
     
     time_lst = []
     freq_lst = []

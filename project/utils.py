@@ -301,11 +301,12 @@ def load_model(model_path):
         "combine_heads_2d": combine_heads_2d
     }
     model = model_from_yaml(open(os.path.join(model_path, "arch.yaml")).read(), custom_objects=custom_layers)
-    para_model = multi_gpu_model(model, gpus=2)
+    #para_model = multi_gpu_model(model, gpus=2)
 
     full_path = os.path.join(model_path, "weights.h5")
-    para_model.load_weights(full_path)
-    model = para_model.layers[-2]
+    #para_model.load_weights(full_path)
+    model.load_weights(full_path)
+    #model = para_model.layers[-2]
 
     print("model " + model_path + " loaded")
     return model
