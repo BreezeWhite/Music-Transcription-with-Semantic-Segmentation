@@ -7,14 +7,13 @@ import argparse
 import numpy as np
 import h5py
 
-from PrintPianoRoll import PLOT
-from MusicNet.FeatureExtraction import fetch_harmonic
+from project.Feature.FeatureFirstLayer import feature_extraction
+from project.Feature.FeatureSecondLayer import fetch_harmonic
 from project.postprocess import PostProcess
 from project.Evaluate.predict import predict
 from project.Evaluate.eval_utils import create_batches
 
 from project.utils import load_model, model_info
-from project.MelodyExt import feature_extraction
 from project.configuration import MusicNet_Instruments
 
 
