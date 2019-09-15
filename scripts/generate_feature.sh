@@ -1,10 +1,11 @@
 #!/bin/bash
 
 DATASET=Maps
-PHASE=test
+PHASE=train
 PIECE_PER_FILE=20
-OUTPUT=/media/whitebreeze/data/maps/test_feature
+OUTPUT=/media/whitebreeze/data/maps/train_feature
 
+cd ..
 python3 GenFeature.py --help
 
 python3 GenFeature.py $DATASET \

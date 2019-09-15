@@ -4,6 +4,7 @@ out_model=Maestro-Attn-W4.2
 epoch=12
 early_stop=6
 
+cd ..
 python3 TrainModel.py Maestro $out_model       \
                       --epoch $epoch           \
                       --steps 5000             \
