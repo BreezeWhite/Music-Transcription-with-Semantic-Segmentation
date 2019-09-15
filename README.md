@@ -54,13 +54,13 @@ To install the requirements, enter the following command:
 
 2. ```cd scripts```
 
-3. Modify the content of generate_feature.sh
+3. Modify the content of *generate_feature.sh*
 
 4. Run the *generate_feature.sh* script
 
 #### Training
 
-There are some cases for training, by defining different input feature type and output cases. For quick start, please refer to scripts/train_model.sh 
+There are some cases for training, by defining different input feature type and output cases. For quick start, please refer to *scripts/train_model.sh* 
 
 For input, you can either choose using **HCFP** or **CFP** representation, depending on your settings of pre-processed feature.  
 
@@ -96,25 +96,29 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 To predict and evaluate the scores with label, run the command:
 
 ```
-python3 Evaluation.py  MusicNet \
-                       --model_path <path/to/trained/model> \
-                       --save-pred <path/to/store/predictions> \
+python3 Evaluation.py frame \
+    --feature-path <path/to/generated/feature> \
+    --model-path <path/to/trained/model> \
+    --pred-save-path <path/to/store/predictions> \
 ```
 
-Currently, this script doesn't exactly have any evaluation functions. The only use is to make predictions and store them. You should implement the evaluation by yourself, or check out the original code inside **v1** folder.
+You can check out *scripts/evaluate_with_pred.sh* and *scripts/pred_and_evaluate.sh* for example use.
 
 #### Single Song Transcription
 
 To transcribe on a single song, run the command:
 
 ```
-python3 SingleSongTest.py --input-audio <input/audio> 
-                          --model-path <path/to/pre-trained/model>
+python3 SingleSongTest.py \
+    --input-audio <input/audio> 
+    --model-path <path/to/pre-trained/model>
 ```
 
 There will be an output file under the same path named *pred.hdf*, which contains the prediction of the given audio. 
 
-To get the predicted midi, add `--to-midi <path/to/store/midi>` flag. The midi will be stored at the given path.
+To get the predicted midi, add `--to-midi <path/to/save/midi>` flag. The midi will be stored at the given path.
+
+There is also an example script in *scripts* folder called *transcribe_audio.sh*
 
 #### Extra
 
