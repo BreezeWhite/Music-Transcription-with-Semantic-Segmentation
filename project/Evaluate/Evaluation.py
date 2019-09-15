@@ -135,7 +135,7 @@ class EvalEngine:
             l_out = h5py.File(ll_out_path, "w")
             write_ll = lambda ll, idx: l_out.create_dataset(str(idx), data=ll, compression="gzip", compression_opts=5)
 
-        hdfs = glob.glob(os.path.join(feature_path, "*.hdf"))[1]
+        hdfs = glob.glob(os.path.join(feature_path, "*.hdf"))
         for idx, (pred, ll) in enumerate(cls.predict_hdf(hdfs, model_path)):
             write_pred(pred, idx)
             write_ll(ll, idx)
