@@ -257,7 +257,7 @@ def down_sample(pred):
 
     return dd
 
-def PostProcess(pred):
+def PostProcess(pred, onset_th=5, dura_th=2):
     onset = pred[:,:,2]
     dura = pred[:,:,1]
     
@@ -266,12 +266,12 @@ def PostProcess(pred):
     # Normalize along each channel and filter by the nomalized value
     # onset channel
     onset = (onset-np.mean(onset))/np.std(onset)
-    onset = np.where(onset<5, 0, onset)
+    onset = np.where(onset<onset_th, 0, onset)
     pred[:,:,2] = onset
     
     # duration channel
     dura = (dura-np.mean(dura))/np.std(dura)
-    dura = np.where(dura<2, 0, dura)
+    dura = np.where(dura<dura_th, 0, dura)
     pred[:,:,1] = dura
     
     notes = infer_piece(down_sample(pred))
