@@ -40,10 +40,10 @@ We used semantic segmentation model for transcription, which is also widely used
 ![model](./figures/ModelArch.png)
 
 ## Installation
-To install the requirement, enter the following command:
+To install the requirements, enter the following command:
 
 ```
-    python3 setup.py install
+    pip install -r requirements.txt
 ```
 
 ## Usage
@@ -52,25 +52,15 @@ To install the requirement, enter the following command:
 
 1. Download dataset from the official website of MAPS and MusicNet.
 
-2. run the command to pre-process the audios
+2. ```cd scripts```
 
-   for MusicNet, `cd MusicNet/`  and execute this command:
+3. Modify the content of generate_feature.sh
 
-```
-   python3 FeatureExtraction.py --MusicNet-path <path/to/downloaded/folder>
-```
-
-   for MAPS, `cd MAPS/` and execute this command:
-
-   ```
-   python3 Maps_FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
-   ```
-
-3. For more detail usage, run `python3 FeatureExtraction.py --help`
+4. Run the *generate_feature.sh* script
 
 #### Training
 
-There are some cases for training, by defining different input feature type and output cases. 
+There are some cases for training, by defining different input feature type and output cases. For quick start, please refer to scripts/train_model.sh 
 
 For input, you can either choose using **HCFP** or **CFP** representation, depending on your settings of pre-processed feature.  
 
@@ -82,8 +72,8 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   ```
   python3 TrainModel.py MusicNet \
-                        --dataset-path <path/to/extracted/feature> \ 
-                        -o <output/model/name>
+      --dataset-path <path/to/extracted/feature> \ 
+      -o <output/model/name>
   ```
 
 
@@ -97,7 +87,7 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   And to continue train on a pre-trained model, add `--input-model <path/to/pre-trained/model>`.
 
-  There are also some callbacks being applied to the training. You can find it around *line 145~150* in *TrainModel.py*.
+  There are also some callbacks being applied to the training. You can find it around *line 150~156* in *TrainModel.py*.
 
 #### Evaluation
 
