@@ -2,8 +2,9 @@
 import os
 import argparse
 
+from project.LabelType import BaseLabelType
 from project.utils import load_model, save_model, model_info
-from project.configuration import Harmonic_Num
+from project.configuration import HarmonicNum
 from project.Models.model import seg, sparse_loss
 from project.Models import model_attn
 from project.Dataflow import DataFlows
@@ -66,7 +67,6 @@ def main(args):
     if args.dataset_path is not None:
         assert(os.path.isdir(args.dataset_path))
         d_path = args.dataset_path
-    df_params["dataset_path"] = d_path
     
     # Number of channels that model need to know about
     ch_num = len(args.channels)
@@ -75,20 +75,21 @@ def main(args):
     # Type of feature to use
     feature_type = "CFP"
     
-    # Number of output classes
-    out_classes = 3
-
     # Output model name
     out_model_name = args.output_model_name
     
     # Feature length on time dimension
     timesteps = args.timesteps
 
+    # Label type
+    mode = "frame_onset"
+    l_type = BaseLabelType(mode, timesteps=timesteps)
+
+    # Number of output classes
+    out_classes = l_type.get_out_classes()
+
     # Continue to train on a pre-trained model
     if args.input_model is not None:
-        # output model name is the same as input model
-        #out_model_name = args.input_model
-        
         # load configuration of previous training
         feature_type, channels, out_classes, timesteps = model_info(args.input_model)
         ch_num = len(channels)
@@ -96,7 +97,7 @@ def main(args):
         if args.dataset == "MusicNet":
             # Sepcial settings for MusicNet that has multiple instruments presented
             if args.use_harmonic:
-                ch_num = Harmonic_num * 2
+                ch_num = HarmonicNum * 2
                 channels = [i for i in range(ch_num)]
                 feature_type = "HCFP"
             if args.multi_instruemnts:
@@ -108,15 +109,16 @@ def main(args):
     df_params["channels"]  = channels
     df_params["mpe_only"]  = not args.multi_instruments
     df_params["timesteps"] = timesteps
+    df_params["dataset_path"]          = d_path
+    df_params["label_conversion_func"] = l_type.get_conversion_func()
 
     print("Loading training data")
     df_cls = dataflow_cls[args.dataset]
     train_df = df_cls(**df_params)
 
+    print("Loading validation data")
     df_params["b_sz"]  = args.val_batch_size
     df_params["phase"] = "val"
-
-    print("Loading validation data")
     val_df = df_cls(**df_params)
 
     hparams["channels"]       = channels

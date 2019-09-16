@@ -4,6 +4,7 @@ import h5py
 import pickle
 import numpy as np
 
+from project.utils import label_conversion
 from project.configuration import get_MusicNet_label_num_mapping, get_instruments_num, MusicNet_Instruments
 
 from keras.utils import Sequence
@@ -15,9 +16,18 @@ class BaseDataflow(Sequence):
     #   "train", "train_label", "val", "val_label", "test", "test_label"
     structure = None 
 
-    def __init__(self, dataset_path, phase, train_val_split=0.8, use_ram=False, 
-                 timesteps=128, b_sz=32, channels=[1, 3], feature_num=384, 
-                 mpe_only=True, **kwargs):
+    def __init__(self, 
+                dataset_path,
+                label_conversion_func,
+                phase, 
+                train_val_split=0.8, 
+                use_ram=False, 
+                timesteps=128, 
+                b_sz=32, 
+                channels=[1, 3], 
+                feature_num=384, 
+                mpe_only=True, 
+                **kwargs):
 
         self.dataset_path    = dataset_path
         self.use_ram         = use_ram
@@ -28,23 +38,19 @@ class BaseDataflow(Sequence):
         self.feature_num     = feature_num
         self.mpe_only        = mpe_only
         self.phase           = phase
-
+        self.l_conv_func     = label_conversion_func
 
         self.features, self.labels = self.load_data(phase, use_ram=use_ram)
 
         self.init_index()
-        
         self.post_init(**kwargs)
 
-    
     def post_init(self, **kwargs):
         # For child classes that need additional initialization.
         pass
     
     def init_index(self):
-        num_piece = len(self.features)
         self.idxs = []
-        
         for i, pi in enumerate(self.features):
             iid = [(i, a) for a in range(0, len(pi), self.timesteps)]
             self.idxs += iid
@@ -103,33 +109,8 @@ class BaseDataflow(Sequence):
         h_ref = self.features[pid]
         cc = BaseDataflow
         x = cc.pad_hdf(h_ref, tid, self.channels, timesteps=self.timesteps, feature_num=self.feature_num)
-
-        l_conv = lambda **arg: cc.label_conversion(self.labels[pid], tid,
-                                                   timesteps=self.timesteps,
-                                                   feature_num=self.feature_num,
-                                                   mpe=self.mpe_only,
-                                                   **arg)
-        y = l_conv()
-        onsets = l_conv(onsets=True)[:,:,1]
-        offsets = l_conv(offsets=True)[:,:,1]
+        y = self.l_conv_func(self.labels[pid], tid)
         
-        """ onset, offset, duration
-        tmp = y[:,:,1]-onsets-offsets
-        tmp[tmp>0] = 0
-        offsets += tmp
-        y[:,:,1] = y[:,:,1]-onsets-offsets
-
-        y = np.dstack([y, onsets, offsets])
-        """
-
-        # onset, duration
-        y[:,:,1] -= onsets
-        y = np.dstack([y, onsets])
-        y[:,:,0] = 1-np.sum(y[:,:,1:], axis=2)
-        
-        total_elem = y.shape[0]*y.shape[1]
-        assert(total_elem==np.sum(y)), "Label error"
-
         return x, y
 
     def load_data(self, phase, use_ram=False):
@@ -261,44 +242,3 @@ class BaseDataflow(Sequence):
             new_l = mpe_l
             
         return new_l
-
-    # Deprecated, use pad_hdf instead
-    def pad_feature(self, x,
-                    feature_num=384,
-                    dimension=False):
-                    
-        extended_chorale = np.array(x)
-
-        # Pad vertically
-        if (((feature_num - x.shape[1]) % 2) == 0):
-            p_t = (feature_num - x.shape[1]) // 2
-            p_b = p_t
-        else:
-            p_t = (feature_num - x.shape[1]) // 2
-            p_b = p_t + 1
-        
-        top_shape = (extended_chorale.shape[0], p_t)
-        bot_shape = (extended_chorale.shape[0], p_b)
-        if len(extended_chorale.shape) == 3:
-            top_shape += (extended_chorale.shape[2],)
-            bot_shape += (extended_chorale.shape[2],)
-        top = np.zeros(top_shape)
-        bottom = np.zeros(bot_shape)
-
-        extended_chorale = np.concatenate([top, extended_chorale, bottom], axis=1)
-
-        # Pad horizontally
-        padding_dimensions = (timesteps,) + extended_chorale.shape[1:] 
-        padding_start = np.zeros(padding_dimensions)
-        padding_end = np.zeros(padding_dimensions)
-        #padding_start[:, :p_t] = 1
-        #padding_end[:, -p_b:] = 1
-
-        extended_chorale = np.concatenate([padding_start, extended_chorale,padding_end], axis=0)
-
-        if (dimension):
-            return extended_chorale, p_t, p_b
-        else:
-            return extended_chorale
-
-
