@@ -81,7 +81,6 @@ def save_pred(preds, labels, out_path):
     ff.close()
     ll.close()
 
-
 def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     min_duration = max(t_unit, min_duration)
     
@@ -98,7 +97,6 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     interval = np.concatenate((onsets, onsets+2)).reshape(2, len(onsets)).transpose()
     
     return new_pitch, interval
-
 
 def gen_onsets_info(data, t_unit=0.02):
     logging.debug("Data shape: %s", data.shape)
