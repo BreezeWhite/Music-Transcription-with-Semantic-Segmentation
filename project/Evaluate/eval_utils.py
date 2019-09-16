@@ -6,7 +6,7 @@ import librosa
 import logging
 import numpy as np
 
-import project.Dataflow.BaseDataflow as bd
+from project.utils import label_conversion
 from project.central_frequency_352 import CentralFrequency
 
 
@@ -38,11 +38,11 @@ def create_batches(feature, b_size, timesteps, feature_num=384):
     
     return BSS
 
-def label_conversion(label, timesteps):
+def full_label_conversion(label, timesteps):
     ll = []
     iters = math.ceil(len(label)/timesteps)
     for tid in range(iters):
-        ll.append(bd.BaseDataflow.label_conversion(
+        ll.append(label_conversion(
             label, 
             tid*timesteps,
             timesteps=timesteps,
