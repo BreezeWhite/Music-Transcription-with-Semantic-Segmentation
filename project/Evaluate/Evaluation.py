@@ -10,7 +10,7 @@ import numpy as np
 
 from project.utils import load_model, model_info
 from project.Evaluate.predict import predict
-from project.Evaluate.eval_utils import create_batches, label_conversion, gen_frame_info, gen_onsets_info
+from project.Evaluate.eval_utils import create_batches, full_label_conversion, gen_frame_info, gen_onsets_info
 from project.postprocess import PostProcess, down_sample
 
 
@@ -169,7 +169,7 @@ class EvalEngine:
                 for key, ff in feat.items():
                     ff = create_batches(ff[:,:,channels], b_size=pred_batch_size, timesteps=timesteps) 
                     ll = label[int(key)]
-                    ll = label_conversion(ll, timesteps)
+                    ll = full_label_conversion(ll, timesteps)
                     ll = create_batches(ll, b_size=pred_batch_size, timesteps=timesteps)
                     pred, ll = predict(ff, model, labels=ll)
                     
