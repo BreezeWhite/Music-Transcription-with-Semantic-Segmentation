@@ -7,43 +7,15 @@ import argparse
 import numpy as np
 import h5py
 
-from PrintPianoRoll import PLOT
-from MusicNet.FeatureExtraction import fetch_harmonic
-#from Evaluation import peak_picking
+from project.Feature.FeatureFirstLayer import feature_extraction
+from project.Feature.FeatureSecondLayer import fetch_harmonic
 from project.postprocess import PostProcess
 from project.Evaluate.predict import predict
+from project.Evaluate.eval_utils import create_batches
 
 from project.utils import load_model, model_info
-from project.MelodyExt import feature_extraction
 from project.configuration import MusicNet_Instruments
 
-def create_batches(feature, b_size, timesteps, feature_num=384):
-    frms = np.ceil(len(feature) / timesteps)
-    bss = np.ceil(frms / b_size).astype('int')
-    
-    pb = (feature_num-feature.shape[1]) // 2
-    pt = feature_num-feature.shape[1]-pb
-    l = len(feature)
-    ch = feature.shape[2]
-    pbb = np.zeros((l, pb, ch))
-    ptt = np.zeros((l, pt, ch))
-    feature = np.hstack([pbb, feature, ptt])
-
-    BSS = []
-    for i in range(bss):
-        bs = np.zeros((b_size, timesteps, feature.shape[1], feature.shape[2]))
-        for ii in range(b_size):
-            start_i = i*b_size*timesteps + ii*timesteps
-            if start_i >= len(feature):
-                break
-            end_i = min(start_i+timesteps, len(feature))
-            length = end_i - start_i
-            
-            part = feature[start_i:start_i+length]
-            bs[ii, 0:length] = part
-        BSS.append(bs)
-    
-    return BSS
 
 def main(args):
     # Pre-process features
@@ -72,7 +44,7 @@ def main(args):
         feature = np.array([Z, tfrL0, tfrLF, tfrLQ])
         feature = np.transpose(feature, axes=(2, 1, 0))
     
-    feature = create_batches(feature[:,:,channels], b_size=16, timesteps=timesteps)
+    feature = create_batches(feature[:,:,channels], b_size=4, timesteps=timesteps)
     model = load_model(args.model_path)
     
 
@@ -83,7 +55,7 @@ def main(args):
     p_out.create_dataset("0", data=pred)
     p_out.close()
 
-    notes, midi = PostProcess(pred)
+    midi = PostProcess(pred)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)

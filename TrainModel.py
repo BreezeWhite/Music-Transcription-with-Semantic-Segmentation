@@ -9,39 +9,47 @@ from project.Models import model_attn
 from project.Dataflow import DataFlows
 
 from keras import callbacks
+from keras.utils import multi_gpu_model
 import tensorflow as tf
 
-dataset_paths = {"Maestro":  "/media/whitebreeze/本機磁碟/maestro-v1.0.0",
-                 "MusicNet": "/media/whitebreeze/本機磁碟/MusicNet",
-                 "Maps":     "/media/whitebreeze/本機磁碟/maps"}
+dataset_paths = {
+    "Maestro":  "/media/whitebreeze/data/maestro-v1.0.0",
+    "MusicNet": "/media/whitebreeze/data/MusicNet",
+    "Maps":     "/media/whitebreeze/data/maps"
+}
 
-dataflow_cls = {"Maestro":  DataFlows.Maestro,
-                "MusicNet": DataFlows.MusicNet,
-                "Maps":     None}
+dataflow_cls = {
+    "Maestro":  DataFlows.MaestroDataflow,
+    "MusicNet": DataFlows.MusicNetDataflow,
+    "Maps":     Dataflows.MapsDataflow
+}
 
 default_model_path = "./model"
 
 
+def train(
+        model, 
+        generator_train, 
+        generator_val,
+        epoch=1,
+        callbacks=None, 
+        steps=6000, 
+        v_steps=3000
+    ):
 
-def train(model, 
-          generator_train, generator_val,
-          epoch     = 1,
-          callbacks = None, 
-          steps     = 6000, 
-          v_steps   = 3000):
-
-    model.fit_generator(generator_train, 
-                        validation_data  = generator_val,
-                        epochs           = epoch,
-                        steps_per_epoch  = steps,
-                        validation_steps = v_steps,
-                        callbacks        = callbacks,
-                        max_queue_size   = 100,
-                        use_multiprocessing = True,
-                        workers             = 1)
+    model.fit_generator(
+        generator_train, 
+        validation_data=generator_val,
+        epochs=epoch,
+        steps_per_epoch=steps,
+        validation_steps=v_steps,
+        callbacks=callbacks,
+        max_queue_size=100,
+        use_multiprocessing=True,
+        workers=1
+    )
 
     return model
-
 
 def main(args):
     if args.dataset not in dataflow_cls:
@@ -79,7 +87,7 @@ def main(args):
     # Continue to train on a pre-trained model
     if args.input_model is not None:
         # output model name is the same as input model
-        out_model_name = args.input_model
+        #out_model_name = args.input_model
         
         # load configuration of previous training
         feature_type, channels, out_classes, timesteps = model_info(args.input_model)
@@ -94,7 +102,6 @@ def main(args):
             if args.multi_instruemnts:
                 out_classes = 12 # There are total 11 types of instruments in MusicNet
 
-        
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
@@ -112,12 +119,10 @@ def main(args):
     print("Loading validation data")
     val_df = df_cls(**df_params)
 
-    
     hparams["channels"]       = channels
     hparams["timesteps"]      = timesteps
     hparams["feature_type"]   = feature_type
     hparams["output_classes"] = out_classes
-
     
     print("Creating/loading model")
     # Create model
@@ -129,32 +134,33 @@ def main(args):
         #            out_class=out_classes)
         model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
                                out_class=out_classes)
-        
-        out_model_name = os.path.join(default_model_path, out_model_name)
-        # Save model and configurations
-        if not os.path.exists(out_model_name):
-            os.makedirs(out_model_name)
-        save_model(model, out_model_name, **hparams)
 
-    model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
+    # Save model and configurations
+    out_model_name = os.path.join(default_model_path, out_model_name)
+    if not os.path.exists(out_model_name):
+        os.makedirs(out_model_name)
+    save_model(model, out_model_name, **hparams)
+    loss_func = lambda label,pred: sparse_loss(label, pred, weight=[1,1,2.5])
 
+    #model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
+    para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
+    para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)
     checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
-                                            monitor="val_acc", save_best_only=True, save_weights_only=True)
+                                            monitor="val_acc", save_best_only=False, save_weights_only=True)
     tensorboard = callbacks.TensorBoard(log_dir=os.path.join("tensorboard", args.output_model_name),
                                         write_images=True)
     callback_list = [checkpoint, earlystop, tensorboard]
     
     print("Start training")
     # Start training
-    train(model, train_df, val_df,
+    train(para_model, train_df, val_df,
           epoch     = args.epoch,
           callbacks = callback_list,
           steps     = args.steps,
           v_steps   = args.val_steps)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")

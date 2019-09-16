@@ -44,10 +44,10 @@ We used semantic segmentation model for transcription, which is also widely used
 ![model](./figures/ModelArch.png)
 
 ## Installation
-To install the requirement, enter the following command:
+To install the requirements, enter the following command:
 
 ```
-    python3 setup.py install
+    pip install -r requirements.txt
 ```
 
 ## Usage
@@ -56,25 +56,15 @@ To install the requirement, enter the following command:
 
 1. Download dataset from the official website of MAPS and MusicNet.
 
-2. run the command to pre-process the audios
+2. ```cd scripts```
 
-   for MusicNet, `cd MusicNet/`  and execute this command:
+3. Modify the content of *generate_feature.sh*
 
-```
-   python3 FeatureExtraction.py --MusicNet-path <path/to/downloaded/folder>
-```
-
-   for MAPS, `cd MAPS/` and execute this command:
-
-   ```
-   python3 Maps_FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
-   ```
-
-3. For more detail usage, run `python3 FeatureExtraction.py --help`
+4. Run the *generate_feature.sh* script
 
 #### Training
 
-There are some cases for training, by defining different input feature type and output cases. 
+There are some cases for training, by defining different input feature type and output cases. For quick start, please refer to *scripts/train_model.sh* 
 
 For input, you can either choose using **HCFP** or **CFP** representation, depending on your settings of pre-processed feature.  
 
@@ -86,8 +76,8 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   ```
   python3 TrainModel.py MusicNet \
-                        --dataset-path <path/to/extracted/feature> \ 
-                        -o <output/model/name>
+      --dataset-path <path/to/extracted/feature> \ 
+      -o <output/model/name>
   ```
 
 
@@ -101,7 +91,7 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   And to continue train on a pre-trained model, add `--input-model <path/to/pre-trained/model>`.
 
-  There are also some callbacks being applied to the training. You can find it around *line 145~150* in *TrainModel.py*.
+  There are also some callbacks being applied to the training. You can find it around *line 150~156* in *TrainModel.py*.
 
 #### Evaluation
 
@@ -110,25 +100,29 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 To predict and evaluate the scores with label, run the command:
 
 ```
-python3 Evaluation.py  MusicNet \
-                       --model_path <path/to/trained/model> \
-                       --save-pred <path/to/store/predictions> \
+python3 Evaluation.py frame \
+    --feature-path <path/to/generated/feature> \
+    --model-path <path/to/trained/model> \
+    --pred-save-path <path/to/store/predictions> \
 ```
 
-Currently, this script doesn't exactly have any evaluation functions. The only use is to make predictions and store them. You should implement the evaluation by yourself, or check out the original code inside **v1** folder.
+You can check out *scripts/evaluate_with_pred.sh* and *scripts/pred_and_evaluate.sh* for example use.
 
 #### Single Song Transcription
 
 To transcribe on a single song, run the command:
 
 ```
-python3 SingleSongTest.py --input-audio <input/audio> 
-                          --model-path <path/to/pre-trained/model>
+python3 SingleSongTest.py \
+    --input-audio <input/audio> 
+    --model-path <path/to/pre-trained/model>
 ```
 
 There will be an output file under the same path named *pred.hdf*, which contains the prediction of the given audio. 
 
-To get the predicted midi, add `--to-midi <path/to/store/midi>` flag. The midi will be stored at the given path.
+To get the predicted midi, add `--to-midi <path/to/save/midi>` flag. The midi will be stored at the given path.
+
+There is also an example script in *scripts* folder called *transcribe_audio.sh*
 
 #### Extra
 
