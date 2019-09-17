@@ -24,7 +24,7 @@ class BaseLabelType:
         elif self.customized_mode(mode):
             pass
         else:
-            raise ValueError("Available mode: frame, frame_onset, frame_onset_offset. Provided: {}".format(mode))
+            raise ValueError("Available mode: 'frame', 'frame_onset', 'frame_onset_offset'. Provided: {}".format(mode))
     
     # Override this function if you have implemented a new mode
     def customized_mode(self, mode)->bool:
@@ -70,4 +70,4 @@ if __name__ == "__main__":
     try:
         ltype = BaseLabelType("out_of_mode")
     except ValueError as ex:
-        print("Test successfule: {}".format(ex))    
+        print("Test successful: {}".format(ex))    
