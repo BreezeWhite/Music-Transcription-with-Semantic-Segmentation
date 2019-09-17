@@ -22,7 +22,7 @@ dataset_paths = {
 dataflow_cls = {
     "Maestro":  DataFlows.MaestroDataflow,
     "MusicNet": DataFlows.MusicNetDataflow,
-    "Maps":     Dataflows.MapsDataflow
+    "Maps":     DataFlows.MapsDataflow
 }
 
 default_model_path = "./model"
