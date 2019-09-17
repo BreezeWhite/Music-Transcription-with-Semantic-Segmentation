@@ -19,5 +19,4 @@ class MapsFeatExt(base.BaseFeatExt):
             content.append(LabelFmt(onset, offset, note)) 
             last_sec = max(last_sec, offset)
         
-        frame_num = last_sec/self.t_unit
-        return content, frame_num
+        return content, last_sec

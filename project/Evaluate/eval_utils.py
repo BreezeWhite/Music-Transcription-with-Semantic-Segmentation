@@ -38,7 +38,7 @@ def create_batches(feature, b_size, timesteps, feature_num=384):
     
     return BSS
 
-def full_label_conversion(label, timesteps):
+def full_label_conversion(label, timesteps, **kwargs):
     ll = []
     iters = math.ceil(len(label)/timesteps)
     for tid in range(iters):
@@ -46,7 +46,7 @@ def full_label_conversion(label, timesteps):
             label, 
             tid*timesteps,
             timesteps=timesteps,
-            mpe=True
+            **kwargs
         ))
 
     return np.concatenate(ll)

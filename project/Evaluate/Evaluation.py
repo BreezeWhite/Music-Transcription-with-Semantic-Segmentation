@@ -136,9 +136,9 @@ class EvalEngine:
             write_ll = lambda ll, idx: l_out.create_dataset(str(idx), data=ll, compression="gzip", compression_opts=5)
 
         hdfs = glob.glob(os.path.join(feature_path, "*.hdf"))
-        for idx, (pred, ll) in enumerate(cls.predict_hdf(hdfs, model_path)):
-            write_pred(pred, idx)
-            write_ll(ll, idx)
+        for (pred, ll, key) in cls.predict_hdf(hdfs, model_path):
+            write_pred(pred, key)
+            write_ll(ll, key)
             yield pred, ll
         p_out.close() if p_out is not None else None
         l_out.close() if l_out is not None else None
@@ -168,11 +168,9 @@ class EvalEngine:
                 label = pickle.load(open(label_path, "rb"))
                 for key, ff in feat.items():
                     ff = create_batches(ff[:,:,channels], b_size=pred_batch_size, timesteps=timesteps) 
-                    ll = label[int(key)]
-                    ll = full_label_conversion(ll, timesteps)
-                    ll = create_batches(ll, b_size=pred_batch_size, timesteps=timesteps)
-                    pred, ll = predict(ff, model, labels=ll)
+                    ll = label[key]
+                    pred = predict(ff, model)
                     
-                    yield pred, ll
+                    yield pred, ll, key
 
 

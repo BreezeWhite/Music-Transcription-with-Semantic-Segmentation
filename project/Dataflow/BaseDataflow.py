@@ -116,6 +116,18 @@ class BaseDataflow(Sequence):
     def load_data(self, phase, use_ram=False):
         raise NotImplementedError
 
+    def parse_feature_labels(self, hdf_paths, use_ram=False):
+        feature = []
+        labels = []
+        for path in hdf_paths:
+            with h5py.File(path, "r") as hdf:
+                label = pickle.load(open(path.replace(".hdf", ".pickle"), "rb"))
+                for key, value in hdf.items():
+                    feature.append(value[:] if use_ram else value)
+                    labels.append(label[key])
+
+        return feature, labels
+
     def parse_files(self, path, ext):
         paths = []
         for root, dirs, files in os.walk(path):

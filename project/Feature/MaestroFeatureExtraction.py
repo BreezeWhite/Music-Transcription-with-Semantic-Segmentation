@@ -17,8 +17,7 @@ class MaestroFeatExt(base.BaseFeatExt):
             contents.append(LabelFmt(onset, offset, pitch))
             last_sec = max(last_sec, offset)
 
-        frame_num = last_sec/self.t_unit
-        return contents, frame_num
+        return contents, last_sec
 
 
 

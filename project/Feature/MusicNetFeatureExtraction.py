@@ -24,5 +24,5 @@ class MusicNetFeatExt(base.BaseFeatExt):
                 
                 max_sample = max(max_sample, end_time)
 
-        frame_num = max_sample/sample_rate
-        return content, frame_num
+        last_sec = max_sample/sample_rate
+        return content, last_sec

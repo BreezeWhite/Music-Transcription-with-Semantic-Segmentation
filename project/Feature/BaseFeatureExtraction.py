@@ -116,12 +116,12 @@ class BaseFeatExt:
         highest_pitch = librosa.note_to_midi('C8')
         pitches = highest_pitch - lowest_pitch + 1
             
-        labels = []
+        labels = {}
         contains = {} # To summarize a specific instrument is included in pieces
         for idx in trange(len(files), leave=False):
-            item = files[idx]
-            content, frame_num = self.load_label(item)
-            frame_num = int(round(frame_num, 2)/self.t_unit)
+            gt_path = files[idx]
+            content, last_sec = self.load_label(gt_path)
+            frame_num = int(round(last_sec, 2)/self.t_unit)
             
             label = [{} for i in range(frame_num)]
             for cc in content:
@@ -159,8 +159,10 @@ class BaseFeatExt:
                     if item not in contains[instrument]:
                         contains[instrument].append(item)
                         contains[instrument].append(idx)
-                
-            labels.append(label)  
+            
+            key = os.path.basename(gt_path)
+            key = key.rsplit(".", 1)[0] # Remove file extension
+            labels[key] = label
 
         pickle.dump(labels, open(sub_name+".pickle", "wb"), pickle.HIGHEST_PROTOCOL)
         return contains

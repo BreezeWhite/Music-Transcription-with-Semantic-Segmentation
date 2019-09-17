@@ -1,3 +1,4 @@
+import os
 import h5py
 import numpy as np
 
@@ -40,7 +41,9 @@ def process_feature_song_list(
             
             piece = np.dstack((har_s, har_c))
         
-        hdf_out.create_dataset(str(idx), data=piece, compression="gzip", compression_opts=5)
+        key = os.path.basename(song)
+        key = key.replace(".wav", "")
+        hdf_out.create_dataset(key, data=piece, compression="gzip", compression_opts=5)
     
     hdf_out.close()    
 
