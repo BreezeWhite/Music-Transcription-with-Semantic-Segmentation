@@ -97,8 +97,8 @@ def Quef2LogFreqMapping(ceps, q, fs, fc, tc, NumPerOct):
                 freq_band_transformation[i, j] = (f[j] - central_freq[i-1])/(central_freq[i] - central_freq[i-1])
             elif f[j] > central_freq[i] and f[j] < central_freq[i+1]:
                 freq_band_transformation[i, j] = (central_freq[i + 1] - f[j]) / (central_freq[i + 1] - central_freq[i])
-
-    tfrL = np.dot(freq_band_transformation, ceps)
+    
+    tfrL = np.dot(freq_band_transformation[:, :len(ceps)], ceps)
     return tfrL, central_freq
 
 def CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave):
@@ -120,10 +120,11 @@ def CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave):
                 fc_idx = round(fc/fr)
                 tfr = np.real(np.fft.fft(ceps, axis=0))/np.sqrt(N)
                 tfr = nonlinear_func(tfr, g[gc], fc_idx)
-
+    
     tfr0 = tfr0[:int(round(N/2)),:]
     tfr = tfr[:int(round(N/2)),:]
     ceps = ceps[:int(round(N/2)),:]
+    
 
     HighFreqIdx = int(round((1/tc)/fr)+1)
     f = f[:HighFreqIdx]
@@ -139,24 +140,63 @@ def CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave):
 
     return tfrL0, tfrLF, tfrLQ, f, q, t, central_frequencies 
 
-def feature_extraction(filename):
+def feature_extraction(
+        filename,
+        Hop=882,
+        w=7939,
+        fr=2.0,
+        fc=27.5,
+        tc=1/4487.0,
+        g=[0.24, 0.6, 1],
+        NumPerOctave=48,
+        Down_fs=16000
+    ):
+                       
     x, fs = sf.read(filename)
     if len(x.shape)>1:
        x = np.mean(x, axis = 1)
     #x = x[:3*fs]
-    x = signal.resample_poly(x, 16000, fs)
-    fs = 16000.0 # sampling frequency
+    x = signal.resample_poly(x, Down_fs, fs)
+    fs = Down_fs # sampling frequency
     x = x.astype('float32')
-    Hop = 320 # hop size (in sample)
-    h = scipy.signal.blackmanharris(2049) # window size
-    fr = 2.0 # frequency resolution
-    fc = 27.5#80.0 # the frequency of the lowest pitch
-    tc = 1/4487.0#1/1000.0 # the period of the highest pitch
-    g = np.array([0.24, 0.6, 1])
-    NumPerOctave = 48 # Number of bins per octave
+    #Hop = 320 # hop size (in sample)
+    h = scipy.signal.blackmanharris(w) # window size
+    #fr = 2.0 # frequency resolution
+    #fc = 27.5#80.0 # the frequency of the lowest pitch
+    #tc = 1/4487.0#1/1000.0 # the period of the highest pitch
+    #g = np.array([0.24, 0.6, 1])
+    g = np.array(g)
+    #NumPerOctave = 48 # Number of bins per octave
     #f  --> freq for each axis
-    tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
-    Z = tfrLF * tfrLQ
+
+    MaxSample = 15000
+    samples = np.floor(len(x)/Hop).astype('int')
+    print("# Sample: ", samples)
+    if samples > MaxSample:
+        freq_width = MaxSample * Hop
+        Round = np.ceil(samples/MaxSample).astype('int')
+        tmpL0, tmpLF, tmpLQ, tmpZ = [], [], [], []
+        for i in range(Round):
+            tmpX = x[i*freq_width:(i+1)*freq_width]
+            tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(tmpX, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
+            tmpL0.append(tfrL0)
+            tmpLF.append(tfrLF)
+            tmpLQ.append(tfrLQ)
+            tmpZ.append(tfrLF*tfrLQ)
+
+        tfrL0 = tmpL0.pop(0)
+        tfrLF = tmpLF.pop(0)
+        tfrLQ = tmpLQ.pop(0)
+        Z = tmpZ.pop(0)
+        for i in range(Round-1):
+            tfrL0 = np.concatenate((tfrL0, tmpL0.pop(0)), axis=1)
+            tfrLF = np.concatenate((tfrLF, tmpLF.pop(0)), axis=1)
+            tfrLQ = np.concatenate((tfrLQ, tmpLQ.pop(0)), axis=1)
+            Z = np.concatenate((Z, tmpZ.pop(0)), axis=1)
+    else:
+        tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
+        Z = tfrLF * tfrLQ
+
     return Z, tfrL0, tfrLF, tfrLQ, t, CenFreq, f
 
 def patch_extraction(Z, patch_size, th):

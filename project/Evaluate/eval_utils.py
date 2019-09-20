@@ -1,10 +1,44 @@
 
 import os
 import h5py
+import math
+import librosa
+import logging
+import pretty_midi
 import numpy as np
 
+from project.utils import label_conversion
+from project.configuration import MusicNetMIDIMapping
 from project.central_frequency_352 import CentralFrequency
 
+
+def create_batches(feature, b_size, timesteps, feature_num=384):
+    frms = np.ceil(len(feature) / timesteps)
+    bss = np.ceil(frms / b_size).astype('int')
+    
+    pb = (feature_num-feature.shape[1]) // 2
+    pt = feature_num-feature.shape[1]-pb
+    l = len(feature)
+    ch = feature.shape[2]
+    pbb = np.zeros((l, pb, ch))
+    ptt = np.zeros((l, pt, ch))
+    feature = np.hstack([pbb, feature, ptt])
+
+    BSS = []
+    for i in range(bss):
+        bs = np.zeros((b_size, timesteps, feature.shape[1], feature.shape[2]))
+        for ii in range(b_size):
+            start_i = i*b_size*timesteps + ii*timesteps
+            if start_i >= len(feature):
+                break
+            end_i = min(start_i+timesteps, len(feature))
+            length = end_i - start_i
+            
+            part = feature[start_i:start_i+length]
+            bs[ii, 0:length] = part
+        BSS.append(bs)
+    
+    return BSS
 
 def roll_down_sample(data, occur_num=3, base=88):
     # The input argument "data" should be thresholded 
@@ -25,26 +59,23 @@ def roll_down_sample(data, occur_num=3, base=88):
         
     return return_v
 
-def save_pred(preds, labels, out_path):
-    ff = h5py.File(os.path.join(out_path, "pred.hdf"), "w")
-    ll = h5py.File(os.path.join(out_path, "label.hdf"), "w")
-
-    for i in range(len(preds)):
-        ff.create_dataset(str(i), data=preds[i], compression="gzip", compression_opts=5)
-        ll.create_dataset(str(i), data=labels[i], compression="gzip", compression_opts=5)
-
-    ff.close()
-    ll.close()
-
-
-def find_occur(pitch, t_unit=0.02, min_duration=0.03):
+def find_occur(pitch, mode="onset", t_unit=0.02, min_duration=0.03):
     min_duration = max(t_unit, min_duration)
     
-    candidate = np.where(pitch>0.5)[0]
-    shifted   = np.insert(candidate, 0, 0)[:-1]
+    if mode == "onset":
+        candidate = np.where(pitch>0.5)[0]
+        shifted   = np.insert(candidate, 0, 0)[:-1]
+        cond_func = lambda diff: diff>(min_duration/t_unit)
+    elif mode == "offset":
+        shifted = np.where(pitch>0.5)[0]
+        shifted = np.append(shifted, len(pitch)+10)
+        candidate = np.insert(shifted, 0, shifted[0])[:-1]
+        cond_func = lambda diff: -diff>(min_duration/t_unit)
+    else:
+        raise ValueError("Supported mode are ['onset', 'offset']. Given mode: {}".format(mode))
     
     diff   = candidate - shifted
-    on_idx = np.where(diff>(min_duration/t_unit))[0]
+    on_idx = np.where(cond_func(diff))[0]
     on_idx = candidate[on_idx]
     
     new_pitch = np.zeros_like(pitch)
@@ -54,12 +85,40 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     
     return new_pitch, interval
 
+def gen_onsets_info_from_midi(midi, inst_num=1, t_unit=0.02):
+    intervals = []
+    pitches = []
+    inst = midi.instruments[inst_num-1]
+    for note in inst.notes:
+        onset = note.start
+        intervals.append([onset, onset+t_unit*2])
+        pitches.append(librosa.midi_to_hz(note.pitch))
+
+    return np.array(intervals), np.array(pitches)
+    
+def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
+    intervals = []
+    pitches = []
+
+    onsets = {}
+    lowest_pitch = librosa.note_to_midi("A0")
+    for t, ll in enumerate(label):
+        for pitch, insts in ll.items():
+            if inst_num not in insts:
+                continue
+            if (pitch not in onsets) or (insts[inst_num][0] > onsets[pitch]):
+                intervals.append([t*t_unit, (t+2)*t_unit])
+                pitches.append(librosa.midi_to_hz(lowest_pitch+pitch))
+            onsets[pitch] = insts[inst_num][0]
+
+    return np.array(intervals), np.array(pitches)
 
 def gen_onsets_info(data, t_unit=0.02):
-    
+    logging.debug("Data shape: %s", data.shape)
     pitches   = []
     intervals = []
-    
+    lowest_pitch = librosa.note_to_midi("A0")
+
     for i in range(data.shape[1]):
         _, it = find_occur(data[:, i], t_unit)
         
@@ -68,7 +127,8 @@ def gen_onsets_info(data, t_unit=0.02):
         elif len(it) > 0:
             intervals = np.concatenate((intervals, np.array(it)), axis=0)
             
-        hz = CentralFrequency[i]
+        # hz = CentralFrequency[i]
+        hz = librosa.midi_to_hz(lowest_pitch+i)
         for i in range(len(it)):
             pitches.append(hz)
     
@@ -78,13 +138,31 @@ def gen_onsets_info(data, t_unit=0.02):
     
     return intervals, pitches
 
+def gen_frame_info_from_midi(midi, inst_num=1, t_unit=0.02):
+    inst = midi.instruments[inst_num-1]
+    tmp_midi = pretty_midi.PrettyMIDI()
+    tmp_midi.instruments.append(inst)
+    piano_roll = tmp_midi.get_piano_roll(fs=round(1/t_unit)).transpose()
+    low = librosa.note_to_midi("A0")
+    hi = librosa.note_to_midi("C8")
+    piano_roll = piano_roll[:, low:hi]
+
+    return gen_frame_info(piano_roll, t_unit=t_unit)
+
+def gen_frame_info_from_label(label, inst_num=1, t_unit=0.02):
+    roll = label_conversion(label, 0, timesteps=len(label), ori_feature_size=88, feature_num=88)
+    midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
+    ch = midi_ch_mapping.index(inst_num)+1
+    return gen_frame_info(roll[:,:,ch], t_unit=t_unit)
+
 def gen_frame_info(data, t_unit=0.02):
-    
     t_idx, r_idx = np.where(data>0.5)
     #print("Length of estimated notes: ", len(t_idx))
     if len(t_idx) == 0:
         return np.array([]), []
-    f_idx = np.array(CentralFrequency)[r_idx]
+    #f_idx = np.array(CentralFrequency)[r_idx]
+    freq = [librosa.midi_to_hz(21+i) for i in range(88)]
+    f_idx = np.array(freq)[r_idx]
     
     time_lst = []
     freq_lst = []

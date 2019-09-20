@@ -2,12 +2,12 @@
 import h5py
 import pretty_midi
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from librosa import note_to_midi
-
-def do_nothing():
-    return
+from project.Evaluate.eval_utils import roll_down_sample, find_occur
 
 def plot3(pred):
     fig, axes = plt.subplots(nrows=2)
@@ -39,7 +39,6 @@ def plot3(pred):
     """
     plt.show()
     
-
 def draw_roll(mm):
     roll = mm.get_piano_roll(fs=50)
     roll = np.where(roll>0, 1, 0)
@@ -47,7 +46,7 @@ def draw_roll(mm):
     
     plt.show()
 
-def infer_pitch_2(pitch):
+def infer_pitch(pitch):
     """
         Dim: time x 4 (off, dura, onset, offset)
     """
@@ -80,7 +79,7 @@ def infer_pitch_2(pitch):
             # register onset occurence
             if len(onset)>0:
                 # close previous onset and register a new note first
-                register_note(onset[0], i+bound, {"added": "onset", "stren": pitch[onset[0], 2]})
+                register_note(onset[0]-ws, i+bound-ws, {"added": "onset", "stren": pitch[onset[0], 2]})
                 #nn = {"start": onset[0], "end": i+bound-1, "added": "onset"}
                 #notes.append(nn)
                 #del onset[0]
@@ -95,85 +94,12 @@ def infer_pitch_2(pitch):
     
     return notes
   
-def infer_pitch(pitch):
-    """
-        Dim: time x 4 (off, dura, onset, offset)
-    """
-    
-    # Threshold parameters for note finding
-    ws = 16 # window size, ws*0.02sec
-    bound = 7 # peak value detection for onset and offset, the more center, the more strict (value between 0~ws-1)
-    occur_th = ws-2 # discard an onset event after this slience period of duration event 
-    shortest = 5 # shortest note duration
-    offset_vs_dura = 3 # register a new note according to either offset(bigger val) or duration(smaller val) event
-
-
-    pitch = np.insert(pitch, 0, np.zeros((ws, pitch.shape[1])), axis=0) # padding before the pitch occurence
-    onset = None
-    dura = None
-    notes = []
-    
-    def register_note(on, end_t, msg):
-        # register one note
-        if end_t-on >= shortest:
-            nn = {"start": on,"end": end_t, "added": msg}
-            notes.append(nn)
-        
-        onset = None
-    
-    for i in range(len(pitch)):
-        window = pitch[i:i+ws]
-        w_on = window[:,2]
-        w_dur = window[:,1]
-        w_off = window[:,3]
-        
-        if (w_on.argmax() == bound) and np.max(w_on)>0:
-            # register onset occurence
-            if onset is not None:
-                # close previous onset and register a new note first
-                nn = {"start": onset, "end": i+bound-1, "added": "onset"}
-                notes.append(nn)
-            
-            onset = i+bound-1
-            continue
-        
-        if onset is None:
-            continue
-        if np.sum(w_dur[:occur_th])<=0:
-            if np.sum(w_off[:occur_th])<=0:
-                if dura is not None:
-                    # register a note according to last occurence of duration event
-                    register_note(onset, dura, "dura")
-                else:
-                    register_note(onset, onset+shortest, "dura_none")
-                onset = None
-                
-            elif w_off.argmax() == bound:
-                # register one note
-                end_t = i+bound-1
-                register_note(onset, end_t, "offset")
-                onset = None
-            
-        # P(offset | dura) 
-        elif np.sum(w_dur[:occur_th])>0:
-            if np.max(w_dur) > 0:
-                dura = i+w_dur.argmax()-1
-                
-            if w_off.argmax() == bound and np.max(w_dur)<offset_vs_dura:
-                # register one note
-                end_t = i+bound-1
-                register_note(onset, end_t, "off_under_dura")
-                onset = None
-    
-    return notes
-    
 def infer_piece(piece):
     """
         Dim: time x 88 x 4 (off, dura, onset, offset)
     """
     assert(piece.shape[1] == 88), "Please down sample the pitch to 88 first (current: {}).format(piece.shape[1])"
     t_unit = 0.02 # constant, do not modify
-    
     min_align_diff = 1 # to align the onset between notes with a short time difference 
     
     notes = []
@@ -184,7 +110,7 @@ def infer_piece(piece):
         if np.sum(pitch) <= 0:
             continue
             
-        pns = infer_pitch_2(pitch)
+        pns = infer_pitch(pitch)
         for ns in pns:
             ns["pitch"] = i
             notes.append(ns)
@@ -221,7 +147,7 @@ def to_midi(notes, t_unit=0.02):
     l, u = find_min_max_stren(notes)
     s_low = 60
     s_up = 127
-    v_map = lambda stren: int(s_low+((s_up-s_low)*((stren-l)/(u-l))))
+    v_map = lambda stren: int(s_low+((s_up-s_low)*((stren-l)/(u-l+0.0001))))
     
     low_b = note_to_midi("A0")
     coll = set()
@@ -229,67 +155,88 @@ def to_midi(notes, t_unit=0.02):
         pitch = nn["pitch"] + low_b
         start = nn["start"] * t_unit
         end = nn["end"] * t_unit
-        coll.add(v_map(nn["stren"]))
-        m_note = pretty_midi.Note(velocity=v_map(nn["stren"]), pitch=pitch, start=start, end=end)
+        volume = v_map(nn["stren"])
+        coll.add(pitch)
+        m_note = pretty_midi.Note(velocity=volume, pitch=pitch, start=start, end=end)
         piano.notes.append(m_note)
-        
     midi.instruments.append(piano)
     return midi
 
-def roll_down_sample(data, threshold=0.5, occur_num=2, base=88):
-    total_roll = data.shape[1]
-    assert total_roll % base == 0, "Wrong length: {}, {} % {} should be zero!".format(total_roll, total_roll, base)
-    
-    scale = round(total_roll/base)
-    assert(occur_num>0 and occur_num<scale)
-    
-    return_v = np.zeros((len(data), base), dtype=int)
-    
-    for i in range(0, data.shape[1], scale):
-        total = np.sum(data[:, i : i+scale], axis=1)
-        return_v[:, int(i/scale)] = np.where(total>threshold*occur_num, total/occur_num, 0)
-        
-    return return_v
-    
 def down_sample(pred):
     dd = roll_down_sample(pred[:,:,0])
     for i in range(1, pred.shape[2]):
-        dd = np.dstack([dd, roll_down_sample(pred[:,:,i])])
+        dd = np.dstack([dd, roll_down_sample(pred[:,:,i], occur_num=2)])
 
     return dd
 
-def PostProcess(pred):
-    onset = pred[:,:,2]
-    dura = pred[:,:,1]
+def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02):
+    if mode == "note":
+        onset = pred[:,:,2]
+        dura = pred[:,:,1]
+        
+        onset = np.where(onset<dura, 0, onset)
+        
+        # Normalize along each channel and filter by the nomalized value
+        # onset channel
+        onset = (onset-np.mean(onset))/np.std(onset)
+        onset = np.where(onset<onset_th, 0, onset)
+        pred[:,:,2] = onset
+        
+        # duration channel
+        dura = (dura-np.mean(dura))/np.std(dura)
+        dura = np.where(dura<dura_th, 0, dura)
+        pred[:,:,1] = dura
+        
+        notes = infer_piece(down_sample(pred))
+        midi = to_midi(notes, t_unit=t_unit)
     
-    onset = np.where(onset<dura, 0, onset)
-    
-    # Normalize along each channel and filter by the nomalized value
-    # onset channel
-    onset = (onset-np.mean(onset))/np.std(onset)
-    onset = np.where(onset<5, 0, onset)
-    pred[:,:,2] = onset
-    
-    # duration channel
-    dura = (dura-np.mean(dura))/np.std(dura)
-    dura = np.where(dura<2, 0, dura)
-    pred[:,:,1] = dura
-    
-    notes = infer_piece(down_sample(pred))
-    midi = to_midi(notes)
-    
+    elif mode == "frame":
+        ch_num = pred.shape[2]
+        if ch_num == 2:
+            mix = pred[:,:,1]
+        elif ch_num == 3:
+            mix = pred[:,:,1] + pred[:,:,2]
+        else:
+            raise ValueError("Unknown channel length: {}".format(ch_num))
+        
+        p = (mix-np.mean(mix))/np.std(mix)
+        p = np.where(p>frm_th, 1, 0)
+        p = roll_down_sample(p)
+        
+        notes = []
+        for idx in range(p.shape[1]):
+            _, onset_interval = find_occur(p[:,idx], t_unit=t_unit)
+            _, offset_interval = find_occur(p[:,idx], mode="offset", t_unit=t_unit)
+            if len(onset_interval) != len(offset_interval):
+                print("WRNING: length of onset and offset not consistent. Onset len: {}, offset len: {}.".format(len(onset_interval), len(offset_interval)))
+                min_len = min(len(onset_interval), len(offset_interval))
+                onset_interval = onset_interval[:min_len]
+                offset_interval = offset_interval[:min_len]
+
+            for i in range(len(onset_interval)):
+                note = {}
+                onset = onset_interval[i][0]
+                offset = offset_interval[i][0]
+                note["pitch"] = idx
+                note["start"] = int(round(onset/t_unit))
+                note["end"] = int(round(offset/t_unit))
+                note["stren"] = mix[note["start"], idx*4]
+                notes.append(note)
+        midi = to_midi(notes, t_unit=t_unit)
+    else:
+        raise ValueError("Supported mode are ['note', 'frame']. Given mode: {}".format(mode))
+
     return midi
         
         
-        
 if __name__ == "__main__":
-    f_name = "pred.hdf"
-    p_in = h5py.File("HDF/"+f_name, "r")
+    f_name = "Maestro-Attn-W4.2_predictions.hdf"
+    p_in = h5py.File(f_name, "r")
     pred = p_in["0"][:]
     p_in.close()
     
     pp = pred#[16744:22000]
-    midi = PostProcess(pp)
+    midi = PostProcess(pp, mode="frame")
     midi.write("test.mid")
     
     draw_roll(midi)   

@@ -1,11 +1,22 @@
 
-#from project.Dataflow.DataFlows import Maestro, MusicNet
-
 
 
 MusicNet_Instruments = ["Piano", "Harpsichord", "Violin", "Viola", "Cello", "Contrabass", 
                         "Horn", "Oboe", "Bassoon", "Clarinet", "Flute"]
-Harmonic_Num = 6
+MusicNetMIDIMapping = {
+    "Piano": 1,
+    "Harpsichord": 7,
+    "Violin": 41,
+    "Viola": 42,
+    "Cello": 43,
+    "Contrabass": 44,
+    "Horn": 61,
+    "Oboe": 69,
+    "Basoon": 71,
+    "Clarinet": 72,
+    "Flute": 74
+}
+HarmonicNum = 5
 
 def get_MusicNet_label_num_mapping(offset=1, spec_inst=None):
     ori_num = [1, 7, 41, 42, 43, 44, 61, 69, 71, 72, 74]
@@ -34,5 +45,56 @@ def get_instruments_num(insts):
     
     return instruments
 
-def epsilon():
-    return 0.000000001
+
+class BaseDatasetInfo:
+    base_path=""
+    label_ext=""
+    train_wavs=[]
+    test_wavs=[]
+    train_labels=[]
+    test_labels=[]
+
+
+class MapsDatasetInfo(BaseDatasetInfo):
+    base_path="/media/whitebreeze/data/maps"
+    label_ext=".txt"
+    train_wavs=[
+        "MAPS_AkPnBcht_2/AkPnBcht/MUS",
+        "MAPS_AkPnBsdf_2/AkPnBsdf/MUS",
+        "MAPS_AkPnStgb_2/AkPnStgb/MUS",
+        "MAPS_AkPnCGdD_2/AkPnCGdD/MUS",
+        "MAPS_SptkBGCl_2/SptKBGCl/MUS",
+        "MAPS_StbgTGd2_2/StbgTGd2/MUS"
+    ]
+    test_wavs= [
+        "MAPS_ENSTDkAm_2/ENSTDkAm/MUS",
+        "MAPS_ENSTDkCl_2/ENSTDkCl/MUS"
+    ]
+    train_labels=train_wavs
+    test_labels=test_wavs
+
+
+class MusicNetDatasetInfo(BaseDatasetInfo):
+    base_path="/media/whitebreeze/data/MusicNet"
+    label_ext=".csv"
+    train_wavs=["train_data"]
+    test_wavs=["test_data"]
+    train_labels=["train_labels"]
+    test_labels=["test_labels"]
+
+
+class MaestroDatasetInfo(BaseDatasetInfo):
+    base_path="/media/whitebreeze/data/maestro-v1.0.0"
+    label_ext=".midi"
+    train_wavs=["2004", "2006", "2008", "2009", "2011", "2013", "2014", "2015"]
+    test_wavs=["2017"]
+    train_labels=train_wavs
+    test_labels=test_wavs
+
+
+class DatasetInfo:
+    Maps=MapsDatasetInfo()
+    MusicNet=MusicNetDatasetInfo()
+    Maestro=MaestroDatasetInfo()
+    
+       

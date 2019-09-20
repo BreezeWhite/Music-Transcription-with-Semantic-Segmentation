@@ -2,8 +2,9 @@
 import os
 import argparse
 
+from project.LabelType import BaseLabelType
 from project.utils import load_model, save_model, model_info
-from project.configuration import Harmonic_Num
+from project.configuration import HarmonicNum
 from project.Models.model import seg, sparse_loss
 from project.Models import model_attn
 from project.Dataflow import DataFlows
@@ -12,37 +13,44 @@ from keras import callbacks
 from keras.utils import multi_gpu_model
 import tensorflow as tf
 
-dataset_paths = {"Maestro":  "/Maestro",
-                 "MusicNet": "/media/whitebreeze/本機磁碟/MusicNet",
-                 "Maps":     "/media/whitebreeze/本機磁碟/maps"}
+dataset_paths = {
+    "Maestro":  "/media/whitebreeze/data/maestro-v1.0.0",
+    "MusicNet": "/media/whitebreeze/data/MusicNet",
+    "Maps":     "/media/whitebreeze/data/maps"
+}
 
-dataflow_cls = {"Maestro":  DataFlows.Maestro,
-                "MusicNet": DataFlows.MusicNet,
-                "Maps":     None}
+dataflow_cls = {
+    "Maestro":  DataFlows.MaestroDataflow,
+    "MusicNet": DataFlows.MusicNetDataflow,
+    "Maps":     DataFlows.MapsDataflow
+}
 
 default_model_path = "./model"
 
 
+def train(
+        model, 
+        generator_train, 
+        generator_val,
+        epoch=1,
+        callbacks=None, 
+        steps=6000, 
+        v_steps=3000
+    ):
 
-def train(model, 
-          generator_train, generator_val,
-          epoch     = 1,
-          callbacks = None, 
-          steps     = 6000, 
-          v_steps   = 3000):
-
-    model.fit_generator(generator_train, 
-                        validation_data  = generator_val,
-                        epochs           = epoch,
-                        steps_per_epoch  = steps,
-                        validation_steps = v_steps,
-                        callbacks        = callbacks,
-                        max_queue_size   = 100,
-                        use_multiprocessing = True,
-                        workers             = 1)
+    model.fit_generator(
+        generator_train, 
+        validation_data=generator_val,
+        epochs=epoch,
+        steps_per_epoch=steps,
+        validation_steps=v_steps,
+        callbacks=callbacks,
+        max_queue_size=100,
+        use_multiprocessing=True,
+        workers=1
+    )
 
     return model
-
 
 def main(args):
     if args.dataset not in dataflow_cls:
@@ -59,7 +67,6 @@ def main(args):
     if args.dataset_path is not None:
         assert(os.path.isdir(args.dataset_path))
         d_path = args.dataset_path
-    df_params["dataset_path"] = d_path
     
     # Number of channels that model need to know about
     ch_num = len(args.channels)
@@ -68,20 +75,21 @@ def main(args):
     # Type of feature to use
     feature_type = "CFP"
     
-    # Number of output classes
-    out_classes = 3
-
     # Output model name
     out_model_name = args.output_model_name
     
     # Feature length on time dimension
     timesteps = args.timesteps
 
+    # Label type
+    mode = "frame_onset"
+    l_type = BaseLabelType(mode, timesteps=timesteps)
+
+    # Number of output classes
+    out_classes = l_type.get_out_classes()
+
     # Continue to train on a pre-trained model
     if args.input_model is not None:
-        # output model name is the same as input model
-        #out_model_name = args.input_model
-        
         # load configuration of previous training
         feature_type, channels, out_classes, timesteps = model_info(args.input_model)
         ch_num = len(channels)
@@ -89,36 +97,34 @@ def main(args):
         if args.dataset == "MusicNet":
             # Sepcial settings for MusicNet that has multiple instruments presented
             if args.use_harmonic:
-                ch_num = Harmonic_num * 2
+                ch_num = HarmonicNum * 2
                 channels = [i for i in range(ch_num)]
                 feature_type = "HCFP"
             if args.multi_instruemnts:
                 out_classes = 12 # There are total 11 types of instruments in MusicNet
 
-        
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
     df_params["channels"]  = channels
     df_params["mpe_only"]  = not args.multi_instruments
     df_params["timesteps"] = timesteps
+    df_params["dataset_path"]          = d_path
+    df_params["label_conversion_func"] = l_type.get_conversion_func()
 
     print("Loading training data")
     df_cls = dataflow_cls[args.dataset]
     train_df = df_cls(**df_params)
 
+    print("Loading validation data")
     df_params["b_sz"]  = args.val_batch_size
     df_params["phase"] = "val"
-
-    print("Loading validation data")
     val_df = df_cls(**df_params)
 
-    
     hparams["channels"]       = channels
     hparams["timesteps"]      = timesteps
     hparams["feature_type"]   = feature_type
     hparams["output_classes"] = out_classes
-
     
     print("Creating/loading model")
     # Create model
@@ -142,7 +148,6 @@ def main(args):
     para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
     para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
-
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)
     checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
@@ -158,7 +163,6 @@ def main(args):
           callbacks = callback_list,
           steps     = args.steps,
           v_steps   = args.val_steps)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")

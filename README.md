@@ -11,10 +11,15 @@ This work was done based on our prior work of [repo1](https://github.com/BreezeW
 
 For whom would interested in more technical details, the original paper is [here](https://ieeexplore.ieee.org/abstract/document/8682605).
 
+#### Colab
+We have also provide a [colab](http://bit.ly/transcribe-colab) for quick starting. Just run through each block and upload your .mp3 piano recording, then enjoy.
+
+
 ## Table of Contents
 
 * [About](#About)
 * [Overview](#overview)
+* [Install Dependencies](#installation)
 * [Usage](#Usage)
   * [Pre-processing](#pre-processing)
   * [Training](#training)
@@ -23,7 +28,6 @@ For whom would interested in more technical details, the original paper is [here
   * [Single Song Transcription](#single-song-transcription)
   * [Extra](#extra)
     * [Print Piano Roll](#print-piano-roll)
-* [Todo](#todo)
 
 ## Overview
 
@@ -39,31 +43,28 @@ We used semantic segmentation model for transcription, which is also widely used
 
 ![model](./figures/ModelArch.png)
 
+## Installation
+To install the requirements, enter the following command:
+
+```
+    pip install -r requirements.txt
+```
+
 ## Usage
 
 #### Pre-processing
 
 1. Download dataset from the official website of MAPS and MusicNet.
 
-2. run the command to pre-process the audios
+2. ```cd scripts```
 
-   for MusicNet, `cd MusicNet/`  and execute this command:
+3. Modify the content of *generate_feature.sh*
 
-   ```
-   python3 FeatureExtraction.py --MusicNet-path <path/to/downloaded/folder>
-   ```
-
-   for MAPS, `cd MAPS/` and execute this command:
-
-   ```
-   python3 Maps_FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
-   ```
-
-3. For more detail usage, run `python3 FeatureExtraction.py --help`
+4. Run the *generate_feature.sh* script
 
 #### Training
 
-There are some cases for training, by defining different input feature type and output cases. 
+There are some cases for training, by defining different input feature type and output cases. For quick start, please refer to *scripts/train_model.sh* 
 
 For input, you can either choose using **HCFP** or **CFP** representation, depending on your settings of pre-processed feature.  
 
@@ -74,78 +75,54 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
   To train the model on MusicNet, run the command:
 
   ```
-  python3 TrainSemanticModel.py --MusicNet-feature-path <path/to/extracted/feature> \
-                                -o <output/model/name>
+  python3 TrainModel.py MusicNet \
+      --dataset-path <path/to/extracted/feature> \ 
+      -o <output/model/name>
   ```
 
-  The default case will train on **multi-instrument mode** by using **HCFP** features. You can train on MPE mode by adding `--mpe-only` flag, or change to use CFP feature by adding `--no-harmonic` flag.
+
+  The default case will train on **MPE** by using **CFP** features. You can train on multi-instrument mode by adding `--multi-instruments` flag, or change to use HCFP feature by adding `--use-harmonic` flag.
 
 
 
-  There are also some cases you can specify to accelerate the progress. Specify `--use-ram` to load the whole features into the ram if your ram is big enough (at least 64 GB).
+  There are also some cases you can specify to accelerate the progress. Specify `--use-ram` to load the whole features into the ram if your ram is big enough (at least 64 GB, suggested >100 GB).
 
-  To validate the execution of the training command, you can also specify less epochs and steps by adding `-e 1 -n 500`. 
+  To validate the execution of the training command, you can also specify less epochs and steps by adding `-e 1 -s 500`. 
 
   And to continue train on a pre-trained model, add `--input-model <path/to/pre-trained/model>`.
 
-  There are also some callbacks being applied to the training. You can find it around *line 130~140* in *TrainSemanticModel.py*.
-
-#### Prediction
-
-After training has been done, you can generate the predictions now.
-
-​```
-python3 Predict.py --model-path <path/to/model> \
-                   --test-path <test/feature/path>
-​```
-
-The flag `--test-path` can both be a directory or a *.hdf* feature file. If is a directory, then all the files inside this dir will be processed. 
-
-If you want to evaluate on the predictions after finished this command, add                                                `--label-path <path/to/test/label>` to generate and preserve the corresponding label files.
-
-The predictions will automatically be saved as a *.hdf* file. You can specify the save path by adding           `--pred-save-path <path/to/save>`.
-
-If your ram is not big enough, add `--use-ram False`.
-
-There are also some pre-trained model appended in *CheckPoint* folder. You can see the configuration file for the detail information about what dataset is this model trained on, what type of feature does this model use, and what will it output.
+  There are also some callbacks being applied to the training. You can find it around *line 150~156* in *TrainModel.py*.
 
 #### Evaluation
 
-To evaluate the scores of the predictions with label, run the command:
+##### *NOTICE: For a whole and complete evaluation process, please check the version 1 code in **v1** folder.*
 
-​```
-python3 Evaluation.py --test-pred-path <path/to/predictions>
-​```
+To predict and evaluate the scores with label, run the command:
 
-Because the final results are depending the setting of threshold, you would need a validation set to fairly set the threshold. Add `--val-pred-path <path/to/val/predictions>`, and don't forget to generate the predictions first. If this flag is not given, the threshold will be set depending the test set.
+```
+python3 Evaluation.py frame \
+    --feature-path <path/to/generated/feature> \
+    --model-path <path/to/trained/model> \
+    --pred-save-path <path/to/store/predictions> \
+```
 
-The default instrument to evaluate is 0, which is the first channel. There are 11 channels in the prediction of MusicNet. For the code and their indication of instruments are listed below:
-
-| Channel Num | Instrument  |
-| :---------: | :---------: |
-|      0      |    Piano    |
-|      1      | Harpsichord |
-|      2      |   Violin    |
-|      3      |    Viola    |
-|      4      |    Cello    |
-|      5      | Contrabass  |
-|      6      |    Horn     |
-|      7      |    Oboe     |
-|      8      |   Bassoon   |
-|      9      |  Clarinet   |
-|     10      |    Flute    |
-
-You can specify which instrument to evaluate by add `--spec-instrument <channel_num>`.
+You can check out *scripts/evaluate_with_pred.sh* and *scripts/pred_and_evaluate.sh* for example use.
 
 #### Single Song Transcription
 
 To transcribe on a single song, run the command:
 
-​```
-python3 SingleSongTest.py -i <input/audio> -m <path/to/pre-trained/model>
-​```
+```
+python3 SingleSongTest.py \
+    --input-audio <input/audio> 
+    --model-path <path/to/pre-trained/model>
+```
 
-This will output a figure of predicted piano roll without thresholding. And the figure will be under the same path as the given audio. 
+There will be an output file under the same path named *pred.hdf*, which contains the prediction of the given audio. 
+
+To get the predicted midi, add `--to-midi <path/to/save/midi>` flag. The midi will be stored at the given path.
+
+There is also an example script in *scripts* folder called *transcribe_audio.sh*
 
 #### Extra
 
@@ -153,9 +130,9 @@ This will output a figure of predicted piano roll without thresholding. And the 
 
 To print out the predictions as images, like above shown, run the command:
 
-​```
+```
 python3 PrintPianoRoll.py -p <path/to/prediction>
-​```
+```
 
 The path to the folder should containing *pred.hdf* and *label.hdf*. For each figure, there will at most 4 rows, and two as a group, presenting prediction row and label row to the same piece. If there is no *label.hdf* file, the label row would be the same as prediction row.
 
@@ -164,10 +141,4 @@ The default setting will print original output values, without thresholding.  If
 To specify output path and figure name, add `-o <path/to/output> -f <figure_name>`.
 
 Notice that if turn on both `--quantize` and `--spec-instrument` to print out some specific instrument channels, you will also need to specify the flag:`--threshold <[list of thresholds]>`, with the same length of specified instruments.
-
-## Todo
-
-- [x] Add single-song-test function
-- [x] Add function to print out piano rolls
-- [ ] Add configuration of thresholds to the model
 

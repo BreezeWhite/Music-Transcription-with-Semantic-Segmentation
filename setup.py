@@ -16,6 +16,7 @@ setup(
         'keras>=2.2.4',
         'tensorflow-gpu==1.13.1',
         'tensorflow-probability==0.6',
+        'PyYAML>=5.1',
         'tensor2tensor',
         'librosa',
         'pretty_midi'
