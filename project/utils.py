@@ -1,6 +1,7 @@
 import os
 import ast
 import csv
+import h5py
 import numpy as np
 
 from scipy.special import expit
@@ -87,8 +88,6 @@ def label_conversion(label, tid,
     return new_l
                          
 def load_model(model_path):
-    #full_path = os.path.join(model_path, "arch.yaml")
-    #model = model_from_yaml(open(full_path).read())
     custom_layers = {
         "multihead_attention": multihead_attention,
         "Conv2D": L.Conv2D,
@@ -97,14 +96,22 @@ def load_model(model_path):
         "combine_heads_2d": combine_heads_2d
     }
     model = model_from_yaml(open(os.path.join(model_path, "arch.yaml")).read(), custom_objects=custom_layers)
-    #para_model = multi_gpu_model(model, gpus=2)
 
     full_path = os.path.join(model_path, "weights.h5")
-    #para_model.load_weights(full_path)
-    model.load_weights(full_path)
-    #model = para_model.layers[-2]
+    with h5py.File(full_path, "r") as w:
+        keys = list(w.keys())
+        is_para = any(["model" in k for k in keys])
 
+    if is_para:
+        para_model = multi_gpu_model(model, gpus=2)
+        para_model.load_weights(full_path)
+        print("Model {} loaded. Using multi-GPU to train".format(model_path))
+
+        return para_model
+    
+    model.load_weights(full_path)
     print("model " + model_path + " loaded")
+
     return model
 
 def save_model(model, model_path, feature_type="CFP", channels=[1, 3], output_classes=2, timesteps=128):
