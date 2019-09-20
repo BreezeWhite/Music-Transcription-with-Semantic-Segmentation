@@ -3,6 +3,19 @@
 
 MusicNet_Instruments = ["Piano", "Harpsichord", "Violin", "Viola", "Cello", "Contrabass", 
                         "Horn", "Oboe", "Bassoon", "Clarinet", "Flute"]
+MusicNetMIDIMapping = {
+    "Piano": 1,
+    "Harpsichord": 7,
+    "Violin": 41,
+    "Viola": 42,
+    "Cello": 43,
+    "Contrabass": 44,
+    "Horn": 61,
+    "Oboe": 69,
+    "Basoon": 71,
+    "Clarinet": 72,
+    "Flute": 74
+}
 HarmonicNum = 5
 
 def get_MusicNet_label_num_mapping(offset=1, spec_inst=None):

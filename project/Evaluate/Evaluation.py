@@ -8,25 +8,24 @@ import librosa
 import mir_eval
 import numpy as np
 
+from project.configuration import MusicNetMIDIMapping
 from project.utils import load_model, model_info
 from project.Evaluate.predict import predict
-from project.Evaluate.eval_utils import create_batches, full_label_conversion, gen_frame_info, gen_onsets_info
+from project.Evaluate.eval_utils import * 
 from project.postprocess import PostProcess, down_sample
+
+from tmp_debug import plot_onsets_info
 
 
 class EvalEngine:
     @classmethod
-    def eval(cls, generator, eval_func, t_unit=0.02):
+    def eval(cls, generator, eval_func, mode="note", t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
         prec, rec, fs = [], [], []
-        for pred, label in generator():
-            midi = PostProcess(pred)
-            roll = midi.get_piano_roll(fs=int(1/t_unit))
-            roll = np.where(roll>0, 1, 0)[lowest_pitch:lowest_pitch+88].transpose()
-            roll = roll.reshape(roll.shape+(1,))
-            label = down_sample(label)[:,:,1]
-            p, r, f = eval_func(roll, label)
-            print("Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(p, r, f))
+        for idx, (pred, label, key) in enumerate(generator(), 1):
+            midi = PostProcess(pred, mode=mode, onset_th=6, dura_th=1)
+            p, r, f = eval_func(midi, label)
+            print("{}.  Prec: {:.4f}, Rec: {:.4f}, F: {:.4f} {}".format(idx, p, r, f, key))
             prec.append(p)
             rec.append(r)
             fs.append(f)
@@ -34,9 +33,11 @@ class EvalEngine:
 
     @classmethod
     def evaluate_frame(cls, pred, label, t_unit=0.02):
+        inst_num = MusicNetMIDIMapping["Piano"]
+
         # The input pred should be thresholded
-        est_time, est_hz = gen_frame_info(pred.squeeze(), t_unit) 
-        ref_time, ref_hz = gen_frame_info(label.squeeze(), t_unit)
+        est_time, est_hz = gen_frame_info_from_midi(pred, inst_num=inst_num, t_unit=t_unit) 
+        ref_time, ref_hz = gen_frame_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
         out = mir_eval.multipitch.metrics(ref_time, ref_hz, est_time, est_hz)
 
         precision, recall, accuracy = out[0:3]
@@ -46,9 +47,13 @@ class EvalEngine:
 
     @classmethod
     def evaluate_onsets(cls, pred, label, t_unit=0.02):
+        inst_num = MusicNetMIDIMapping["Piano"]
+
         # The input pred should be thresholded
-        est_interval, est_hz = gen_onsets_info(pred, t_unit=t_unit)
-        ref_interval, ref_hz = gen_onsets_info(label, t_unit=t_unit)
+        est_interval, est_hz = gen_onsets_info_from_midi(pred, inst_num=inst_num, t_unit=t_unit)
+        ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
+        #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
+
         out = mir_eval.transcription.precision_recall_f1_overlap(
             ref_interval, ref_hz, 
             est_interval, est_hz, 
@@ -79,29 +84,33 @@ class EvalEngine:
             
         You should either provide one of (feature_path, model_path) pair or (pred_path, label_path) pair.
         """
-        if mode not in ["onset", "frame"]:
+        if mode not in ["note", "frame"]:
             err_info = "Please specify the mode with one of the value 'onset' or 'frame'."
             raise ValueError(err_info)
         else:
-            eval_func = cls.evaluate_onsets if mode=="onset" else cls.evaluate_frame
+            eval_func = cls.evaluate_onsets if mode=="note" else cls.evaluate_frame
 
         if feature_path is not None and model_path is not None:
+            print("Predicting on the dataset: %s", feature_path)
             generator = lambda: cls.predict_dataset(feature_path, model_path, output_save_path=pred_save_path)
         elif pred_path is not None and label_path is not None:
             cont = []
             pred_f = h5py.File(pred_path, "r")
-            label_f = h5py.File(label_path, "r")
+            print("Loading labels")
+            label_f = pickle.load(open(label_path, "rb"))
+            print("Loading predictions")
             for key, pred in pred_f.items():
                 pred = pred[:]
-                ll = label_f[key][:]
-                cont.append([pred, ll])
+                ll = label_f[key]
+                cont.append([pred, ll, key])
+                #if True:
+                #    break
             pred_f.close()
-            label_f.close()
             generator = lambda: cont
         else:
             raise ValueError
 
-        lprec, lrec, lfs = cls.eval(generator, eval_func)
+        lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode)
         length = len(lprec)
         print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f}".format(sum(lprec)/length, sum(lrec)/length, sum(lfs)/length))
 
@@ -120,28 +129,24 @@ class EvalEngine:
             output_save_path: Path to save predictions(include labels) if not none.
         """
         write_pred = lambda ff, idx: 0
-        write_ll = lambda ll, idx: 0
         if output_save_path is not None:
             if not os.path.exists(output_save_path):
                 os.makedirs(output_save_path)
-
             pred_out_name = os.path.basename(model_path)+"_predictions.hdf"
             pred_out_path = os.path.join(output_save_path, pred_out_name)
             p_out = h5py.File(pred_out_path, "w")
             write_pred = lambda ff, idx: p_out.create_dataset(str(idx), data=ff, compression="gzip", compression_opts=5)
 
-            ll_out_name = os.path.basename(model_path)+"_labels.hdf"
-            ll_out_path = os.path.join(output_save_path, ll_out_name)
-            l_out = h5py.File(ll_out_path, "w")
-            write_ll = lambda ll, idx: l_out.create_dataset(str(idx), data=ll, compression="gzip", compression_opts=5)
-
+        labels = {}
         hdfs = glob.glob(os.path.join(feature_path, "*.hdf"))
         for (pred, ll, key) in cls.predict_hdf(hdfs, model_path):
             write_pred(pred, key)
-            write_ll(ll, key)
-            yield pred, ll
+            labels[key] = ll
+            yield pred, ll, key
+
         p_out.close() if p_out is not None else None
-        l_out.close() if l_out is not None else None
+        label_out_name = os.path.basename(model_path)+"_labels.pickle"
+        pickle.dump(labels, open(os.path.join(output_save_path, label_out_name), "wb"), pickle.HIGHEST_PROTOCOL)
 
     @classmethod
     def predict_hdf(
