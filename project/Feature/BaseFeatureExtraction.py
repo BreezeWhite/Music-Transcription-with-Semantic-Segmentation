@@ -155,9 +155,10 @@ class BaseFeatExt:
                     # instrument is contained in pieces
                     if instrument not in contains:
                         contains[instrument] = []
-                    item = item.split("/")[-1].split(".")[0]
-                    if item not in contains[instrument]:
-                        contains[instrument].append(item)
+                    name = os.path.basename(gt_path)
+                    name = name.rsplit(".", 1)[0]
+                    if name not in contains[instrument]:
+                        contains[instrument].append(name)
                         contains[instrument].append(idx)
             
             key = os.path.basename(gt_path)
