@@ -1,5 +1,7 @@
 
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+
 import argparse
 
 from project.LabelType import BaseLabelType
@@ -14,9 +16,9 @@ from keras.utils import multi_gpu_model
 import tensorflow as tf
 
 dataset_paths = {
-    "Maestro":  "/media/whitebreeze/data/maestro-v1.0.0",
-    "MusicNet": "/media/whitebreeze/data/MusicNet",
-    "Maps":     "/media/whitebreeze/data/maps"
+    "Maestro":  "/data/Maestro",
+    "MusicNet": "/data/MusicNet",
+    "Maps":     "/data/Maps"
 }
 
 dataflow_cls = {
@@ -46,9 +48,9 @@ def train(
         validation_steps=v_steps,
         callbacks=callbacks,
         max_queue_size=100,
-        use_multiprocessing=True,
-        workers=1
-    )
+        use_multiprocessing=False)
+    #    workers=1
+    #)
 
     return model
 
@@ -144,9 +146,12 @@ def main(args):
     save_model(model, out_model_name, **hparams)
     loss_func = lambda label,pred: sparse_loss(label, pred, weight=[1,1,2.5])
 
-    #model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
-    para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
-    para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
+    if True:
+        para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
+        para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
+        model = para_model
+    else:
+        model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)
@@ -158,7 +163,7 @@ def main(args):
     
     print("Start training")
     # Start training
-    train(para_model, train_df, val_df,
+    train(model, train_df, val_df,
           epoch     = args.epoch,
           callbacks = callback_list,
           steps     = args.steps,
