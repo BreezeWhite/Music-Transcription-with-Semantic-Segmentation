@@ -1,10 +1,11 @@
 
 import os
 from project.utils import *
+from tensor2tensor.layers.common_attention import local_attention_2d, split_heads_2d, combine_heads_2d
+from keras.models import model_from_yaml
 
-
-model_name = "./model/Maestro-Attn-W4.2"
-save_name = "./Maestro-Attn-W4.2-SingleGPU"
+model_name = "./model/Maps-Attn-W4.2.1"
+save_name = "./Maps-Attn-W4.2.1-SingleGPU"
 model = load_model(model_name)
 m_info = model_info(model_name)
 

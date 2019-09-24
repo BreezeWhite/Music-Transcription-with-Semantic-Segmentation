@@ -105,13 +105,11 @@ def load_model(model_path):
     if is_para:
         para_model = multi_gpu_model(model, gpus=2)
         para_model.load_weights(full_path)
-        print("Model {} loaded. Using multi-GPU to train".format(model_path))
+        model = para_model.layers[-2]
+    else:
+        model.load_weights(full_path)
 
-        return para_model
-    
-    model.load_weights(full_path)
-    print("model " + model_path + " loaded")
-
+    print("Model " + model_path + " loaded")
     return model
 
 def save_model(model, model_path, feature_type="CFP", channels=[1, 3], output_classes=2, timesteps=128):
