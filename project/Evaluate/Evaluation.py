@@ -14,7 +14,7 @@ from project.Evaluate.predict import predict
 from project.Evaluate.eval_utils import * 
 from project.postprocess import PostProcess, down_sample
 
-from tmp_debug import plot_onsets_info
+#from tmp_debug import plot_onsets_info
 
 
 class EvalEngine:
@@ -139,6 +139,9 @@ class EvalEngine:
 
         labels = {}
         hdfs = glob.glob(os.path.join(feature_path, "*.hdf"))
+        if len(hdfs) == 0:
+            raise ValueError("No feature files found at path {}".format(feature_path))
+
         for (pred, ll, key) in cls.predict_hdf(hdfs, model_path):
             write_pred(pred, key)
             labels[key] = ll

@@ -120,11 +120,11 @@ class BaseDataflow(Sequence):
         feature = []
         labels = []
         for path in hdf_paths:
-            with h5py.File(path, "r") as hdf:
-                label = pickle.load(open(path.replace(".hdf", ".pickle"), "rb"))
-                for key, value in hdf.items():
-                    feature.append(value[:] if use_ram else value)
-                    labels.append(label[key])
+            hdf = h5py.File(path, "r")
+            label = pickle.load(open(path.replace(".hdf", ".pickle"), "rb"))
+            for key, value in hdf.items():
+                feature.append(value[:] if use_ram else value)
+                labels.append(label[key])
 
         return feature, labels
 

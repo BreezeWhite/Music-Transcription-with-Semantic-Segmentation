@@ -45,10 +45,8 @@ class MaestroDataflow(BaseDataflow):
         # feature = self.parse_hdf(hdfs, use_ram=use_ram)
         # lbs = [a.replace(".hdf", ".pickle") for a in hdfs]
         # label = self.parse_pickle(lbs)
-        self.parse_feature_labels(hdfs)
+        return self.parse_feature_labels(hdfs)
 
-        return feature, label
-                
 
 class MusicNetDataflow(MaestroDataflow):
     structure = {
@@ -60,7 +58,7 @@ class MusicNetDataflow(MaestroDataflow):
         "test_label":  "features/post_exp/test"
     }
 
-    def post_init(**kwargs):
+    def post_init(self, **kwargs):
         # Split train/val data from training set
 
         split_p = round(len(self.features) * self.train_val_split)
@@ -68,7 +66,7 @@ class MusicNetDataflow(MaestroDataflow):
             self.features = self.features[:split_p]
             self.labels = self.labels[:split_p]
         elif self.phase == "val":
-            self.features = self.featurs[split_p:]
+            self.features = self.features[split_p:]
             self.labels = self.labels[split_p:]
 
         self.init_index()
@@ -81,5 +79,5 @@ class MapsDataflow(MusicNetDataflow):
         "val":         "train_feature",
         "val_label":   "train_feature",
         "test":        "test_feature",
-        "test_label": "test_feature"
+        "test_label":  "test_feature"
     }
