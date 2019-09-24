@@ -65,7 +65,7 @@ def infer_pitch(pitch):
     def register_note(on, end_t, kmsgs):
         # register one note
         if end_t-on >= shortest:
-            nn = {"start": on,"end": end_t, **kmsgs}
+            nn = {"start": on-ws, "end": end_t-ws, **kmsgs}
             notes.append(nn)
         
         del onset[0]
@@ -79,12 +79,12 @@ def infer_pitch(pitch):
             # register onset occurence
             if len(onset)>0:
                 # close previous onset and register a new note first
-                register_note(onset[0]-ws, i+bound-ws, {"added": "onset", "stren": pitch[onset[0], 2]})
+                register_note(onset[0], i+bound, {"added": "onset", "stren": pitch[onset[0], 2]})
                 #nn = {"start": onset[0], "end": i+bound-1, "added": "onset"}
                 #notes.append(nn)
                 #del onset[0]
             
-            onset.append(i+bound)
+            onset.append(i)
             continue
             
         if len(onset)==0:

@@ -13,7 +13,7 @@ class MapsFeatExt(base.BaseFeatExt):
         last_sec = 0
         for i in range(1, len(lines)):
             if lines[i].strip() == "":
-                break
+                continue
             onset, offset, note = lines[i].split("\t")
             onset, offset, note = float(onset), float(offset), int(note[:note.find("\n")])
             content.append(LabelFmt(onset, offset, note)) 
