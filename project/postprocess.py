@@ -80,10 +80,6 @@ def infer_pitch(pitch):
             if len(onset)>0:
                 # close previous onset and register a new note first
                 register_note(onset[0], i+bound, {"added": "onset", "stren": pitch[onset[0], 2]})
-                #nn = {"start": onset[0], "end": i+bound-1, "added": "onset"}
-                #notes.append(nn)
-                #del onset[0]
-            
             onset.append(i)
             continue
             
