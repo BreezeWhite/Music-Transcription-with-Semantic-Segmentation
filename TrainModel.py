@@ -16,9 +16,9 @@ from keras.utils import multi_gpu_model
 import tensorflow as tf
 
 dataset_paths = {
-    "Maestro":  "/data/Maestro",
-    "MusicNet": "/data/MusicNet",
-    "Maps":     "/data/Maps"
+    "Maestro":  "/media/data/Maestro",
+    "MusicNet": "/media/data/MusicNet",
+    "Maps":     "/media/data/Maps"
 }
 
 dataflow_cls = {
@@ -102,16 +102,16 @@ def main(args):
                 ch_num = HarmonicNum * 2
                 channels = [i for i in range(ch_num)]
                 feature_type = "HCFP"
-            if args.multi_instruemnts:
+            if args.multi_instruments:
                 out_classes = 12 # There are total 11 types of instruments in MusicNet
 
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
     df_params["channels"]  = channels
-    df_params["mpe_only"]  = not args.multi_instruments
     df_params["timesteps"] = timesteps
-    df_params["dataset_path"]          = d_path
+    df_params["out_classes"]  = out_classes
+    df_params["dataset_path"] = d_path
     df_params["label_conversion_func"] = l_type.get_conversion_func()
 
     print("Loading training data")
@@ -145,13 +145,14 @@ def main(args):
         os.makedirs(out_model_name)
     save_model(model, out_model_name, **hparams)
     loss_func = lambda label,pred: sparse_loss(label, pred, weight=[1,1,2.5])
-
-    if True:
+    
+    # Use multi-gpu to train the model
+    if True and False:
         para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
         para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
         model = para_model
     else:
-        model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
+        model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)

@@ -54,9 +54,12 @@ class BaseDatasetInfo:
     train_labels=[]
     test_labels=[]
 
+    def __init__(self, base_path):
+        self.base_path = base_path
+
 
 class MapsDatasetInfo(BaseDatasetInfo):
-    base_path="/media/whitebreeze/data/maps"
+    base_path="/media/data/maps"
     label_ext=".txt"
     train_wavs=[
         "MAPS_AkPnBcht_2/AkPnBcht/MUS",
@@ -75,7 +78,7 @@ class MapsDatasetInfo(BaseDatasetInfo):
 
 
 class MusicNetDatasetInfo(BaseDatasetInfo):
-    base_path="/media/whitebreeze/data/MusicNet"
+    base_path="/media/data/MusicNet"
     label_ext=".csv"
     train_wavs=["train_data"]
     test_wavs=["test_data"]
@@ -92,9 +95,5 @@ class MaestroDatasetInfo(BaseDatasetInfo):
     test_labels=test_wavs
 
 
-class DatasetInfo:
-    Maps=MapsDatasetInfo()
-    MusicNet=MusicNetDatasetInfo()
-    Maestro=MaestroDatasetInfo()
     
        
