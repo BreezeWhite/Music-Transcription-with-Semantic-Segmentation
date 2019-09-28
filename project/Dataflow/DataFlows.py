@@ -41,7 +41,7 @@ class MaestroDataflow(BaseDataflow):
         else:
             raise TypeError
 
-        hdfs = self.parse_files(path, ".hdf")
+        hdfs = self.parse_files(path, ".hdf")[:1]
         # feature = self.parse_hdf(hdfs, use_ram=use_ram)
         # lbs = [a.replace(".hdf", ".pickle") for a in hdfs]
         # label = self.parse_pickle(lbs)
@@ -50,12 +50,12 @@ class MaestroDataflow(BaseDataflow):
 
 class MusicNetDataflow(MaestroDataflow):
     structure = {
-        "train":       "features/post_exp/train",
-        "train_label": "features/post_exp/train",
-        "val":         "features/post_exp/train",
-        "val_label":   "features/post_exp/train",
-        "test":        "features/post_exp/test",
-        "test_label":  "features/post_exp/test"
+        "train":       "train_feature",
+        "train_label": "train_feature",
+        "val":         "train_feature",
+        "val_label":   "train_feature",
+        "test":        "test_feature",
+        "test_label":  "test_feature"
     }
 
     def post_init(self, **kwargs):

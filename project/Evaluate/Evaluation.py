@@ -63,11 +63,17 @@ class EvalEngine:
         ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
         #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
 
-        out = mir_eval.transcription.precision_recall_f1_overlap(
-            ref_interval, ref_hz, 
-            est_interval, est_hz, 
-            offset_ratio=None
-        )
+        try:
+            out = mir_eval.transcription.precision_recall_f1_overlap(
+                ref_interval, ref_hz, 
+                est_interval, est_hz, 
+                offset_ratio=None,
+                onset_tolerance=0.05
+            )
+        except ValueError as expt:
+            print(expt)
+            out = [0, 0, 0, 0]
+
         precision, recall, fscore, avg_overlap_ratio = out
         return precision, recall, fscore
 
@@ -80,7 +86,7 @@ class EvalEngine:
         pred_save_path=None,
         pred_path=None,
         label_path=None,
-        onset_th=7.5, 
+        onset_th=5, 
         dura_th=1, 
         frm_th=1,
         t_unit=0.02
@@ -112,7 +118,7 @@ class EvalEngine:
             label_f = pickle.load(open(label_path, "rb"))
             print("Loading predictions")
             for key, pred in pred_f.items():
-                #if key != "MAPS_MUS-schu_143_1_ENSTDkAm":
+                #if key != "MAPS_MUS-chpn-p4_ENSTDkAm":
                 #    continue
                 pred = pred[:]
                 ll = label_f[key]

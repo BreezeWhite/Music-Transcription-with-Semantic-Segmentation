@@ -1,9 +1,9 @@
 #!/bin/bash
 
-MODE=frame
-FEATURE_PATH=/media/whitebreeze/data/maps/test_feature
-MODEL_PATH=./attn_model
-PRED_SAVE_PATH=$FEATURE_PATH/prediction
+MODE=onset
+FEATURE_PATH=/media/whitebreeze/data/maps/test_feature2
+MODEL_PATH=./model/Maestro-Attn-W4.2
+PRED_SAVE_PATH=$FEATURE_PATH/prediction2
 
 cd ..
 python3 Evaluation.py --help

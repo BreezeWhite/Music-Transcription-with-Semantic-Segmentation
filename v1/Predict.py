@@ -1,6 +1,8 @@
 ﻿
 
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import csv
 import h5py
 import pickle
@@ -145,6 +147,11 @@ def FullTest(model_path, test_path,
     # Load files
     print("Loading files")
     features = parse_path(test_path)
+    for ff in features:
+        if not ff.endswith(".hdf"):
+            idx = features.index(ff)
+            del features[idx]
+
     if label_path is not None:
         # Assume there are exactly label files corresponding to the test audios
         #labels = parse_path(label_path, label=True)

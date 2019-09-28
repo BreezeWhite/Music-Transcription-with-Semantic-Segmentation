@@ -81,7 +81,7 @@ def find_occur(pitch, mode="onset", t_unit=0.02, min_duration=0.03):
     new_pitch = np.zeros_like(pitch)
     new_pitch[on_idx] = pitch[on_idx]
     onsets   = on_idx * t_unit
-    interval = np.concatenate((onsets, onsets+2)).reshape(2, len(onsets)).transpose()
+    interval = np.concatenate((onsets, onsets+2*t_unit)).reshape(2, len(onsets)).transpose()
     
     return new_pitch, interval
 
@@ -96,7 +96,7 @@ def gen_onsets_info_from_midi(midi, inst_num=1, t_unit=0.02):
 
     return np.array(intervals), np.array(pitches)
     
-def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
+def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
     intervals = []
     pitches = []
 
@@ -113,14 +113,20 @@ def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
 
     return np.array(intervals), np.array(pitches)
 
+def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
+    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
+    midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
+    ch = midi_ch_mapping.index(inst_num)+1
+    return gen_onsets_info(roll[:,:,ch], t_unit=t_unit)
+
 def gen_onsets_info(data, t_unit=0.02):
-    logging.debug("Data shape: %s", data.shape)
+    #logging.debug("Data shape: %s", data.shape)
     pitches   = []
     intervals = []
     lowest_pitch = librosa.note_to_midi("A0")
 
     for i in range(data.shape[1]):
-        _, it = find_occur(data[:, i], t_unit)
+        _, it = find_occur(data[:, i], mode="onset", t_unit=t_unit)
         
         if len(intervals)==0 and len(it) > 0:
             intervals = np.array(it)
