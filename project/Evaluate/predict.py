@@ -2,21 +2,8 @@
 import numpy as np
 
 from scipy.special import expit
+from project.Evaluation.eval_utils import cut_frame, cut_batch_pred
 
-def cut_frame(frm, ori_feature_size=352, feature_num=384):
-    cb = (feature_num-ori_feature_size) // 2
-    c_range = range(cb, cb+ori_feature_size)
-    
-    return frm[:, c_range]
-
-def cut_batch_pred(b_pred):
-    t_len = len(b_pred[0])
-    cut_rr = range(round(t_len*0.25), round(t_len*0.75))
-    cut_pp = []
-    for i in range(len(b_pred)):
-        cut_pp.append(b_pred[i][cut_rr])
-    
-    return np.array(cut_pp)
 
 def predict(features, model, labels=None):
     """
