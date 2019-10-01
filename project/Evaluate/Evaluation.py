@@ -68,7 +68,7 @@ class EvalEngine:
                 ref_interval, ref_hz, 
                 est_interval, est_hz, 
                 offset_ratio=None,
-                onset_tolerance=0.05
+                onset_tolerance=0.06
             )
         except ValueError as expt:
             print(expt)
@@ -86,7 +86,7 @@ class EvalEngine:
         pred_save_path=None,
         pred_path=None,
         label_path=None,
-        onset_th=5, 
+        onset_th=7.5, 
         dura_th=1, 
         frm_th=1,
         t_unit=0.02
@@ -118,7 +118,7 @@ class EvalEngine:
             label_f = pickle.load(open(label_path, "rb"))
             print("Loading predictions")
             for key, pred in pred_f.items():
-                #if key != "MAPS_MUS-chpn-p4_ENSTDkAm":
+                #if key != "MAPS_MUS-liz_et_trans5_ENSTDkCl":
                 #    continue
                 pred = pred[:]
                 ll = label_f[key]
