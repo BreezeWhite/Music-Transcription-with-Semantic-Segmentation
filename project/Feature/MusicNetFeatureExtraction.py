@@ -20,7 +20,7 @@ class MusicNetFeatExt(base.BaseFeatExt):
                 end_beat   = float(label['end_beat'])
                 note_value = label['note_value']
 
-                cc = LabelFmt(start_time, end_time, instrument, note, start_beat, end_beat, note_value)
+                cc = LabelFmt(start_time, end_time, note, instrument, start_beat, end_beat, note_value)
                 content.append(cc)
                 last_sec = max(last_sec, end_time)
 
