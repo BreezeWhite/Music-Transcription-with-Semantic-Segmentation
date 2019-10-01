@@ -114,7 +114,7 @@ def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
     return np.array(intervals), np.array(pitches)
 
 def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
+    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, mpe=True, ori_feature_size=88, feature_num=88)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
     return gen_onsets_info(roll[:,:,ch], t_unit=t_unit)

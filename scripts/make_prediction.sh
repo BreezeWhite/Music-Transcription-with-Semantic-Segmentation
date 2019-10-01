@@ -7,8 +7,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 
 from project.Evaluate.Evaluation import EvalEngine
 
-feature_path = "/media/whitebreeze/data/maps/val_feature"
-model_path = "../model/Maps-Attn-W4.2.1"
+feature_path = "/data/Maps/test_feature2"
 model_path = "../model/Maestro-Attn-W4.2"
 pred_save_path = feature_path + "/maestro_prediction"
 #pred_save_path = "./prediction/maps_old_result"
