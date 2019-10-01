@@ -43,7 +43,7 @@ class BaseLabelType:
 
     def get_frame_onset(self, label, tid)->np.ndarray:
         frame = self.get_frame(label, tid)
-        onset = self.l_conv(label, tid, onsets=True)[:,:,1]
+        onset = self.l_conv(label, tid, onsets=True, mpe=True)[:,:,1]
 
         frame[:,:,1] -= onset
         frm_on = np.dstack([frame, onset])

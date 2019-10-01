@@ -14,16 +14,25 @@ from project.Evaluate.predict import predict
 from project.Evaluate.eval_utils import * 
 from project.postprocess import PostProcess, down_sample
 
-#from tmp_debug import plot_onsets_info
+from tmp_debug import plot_onsets_info, draw
 
 
 class EvalEngine:
     @classmethod
-    def eval(cls, generator, eval_func, mode="note", t_unit=0.02):
+    def eval(cls, 
+             generator, 
+             eval_func, 
+             mode="note", 
+             onset_th=7, 
+             dura_th=1, 
+             frm_th=1, 
+             t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
         prec, rec, fs = [], [], []
         for idx, (pred, label, key) in enumerate(generator(), 1):
-            midi = PostProcess(pred, mode=mode, onset_th=6, dura_th=1)
+            #draw(pred[:,:,2])
+            midi = PostProcess(pred, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
+            #midi.write(key+".mid") if mode=="note" else midi.write(key+"_frame.mid")
             p, r, f = eval_func(midi, label)
             print("{}.  Prec: {:.4f}, Rec: {:.4f}, F: {:.4f} {}".format(idx, p, r, f, key))
             prec.append(p)
@@ -54,11 +63,17 @@ class EvalEngine:
         ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
         #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
 
-        out = mir_eval.transcription.precision_recall_f1_overlap(
-            ref_interval, ref_hz, 
-            est_interval, est_hz, 
-            offset_ratio=None
-        )
+        try:
+            out = mir_eval.transcription.precision_recall_f1_overlap(
+                ref_interval, ref_hz, 
+                est_interval, est_hz, 
+                offset_ratio=None,
+                onset_tolerance=0.05
+            )
+        except ValueError as expt:
+            print(expt)
+            out = [0, 0, 0, 0]
+
         precision, recall, fscore, avg_overlap_ratio = out
         return precision, recall, fscore
 
@@ -71,11 +86,14 @@ class EvalEngine:
         pred_save_path=None,
         pred_path=None,
         label_path=None,
+        onset_th=5, 
+        dura_th=1, 
+        frm_th=1,
         t_unit=0.02
     ):
         """
         Parameters:
-            mode: Either one of "onset" or "frame".
+            mode: Either one of "note" or "frame".
             feature_path: Path to the generated feature(*.hdf) and label(*.pickle) files.
             pred_path: Path to the prediction hdf file
             pred_save_path: Path to save the prediction, optional.
@@ -85,7 +103,7 @@ class EvalEngine:
         You should either provide one of (feature_path, model_path) pair or (pred_path, label_path) pair.
         """
         if mode not in ["note", "frame"]:
-            err_info = "Please specify the mode with one of the value 'onset' or 'frame'."
+            err_info = "Please specify the mode with one of the value 'note' or 'frame'."
             raise ValueError(err_info)
         else:
             eval_func = cls.evaluate_onsets if mode=="note" else cls.evaluate_frame
@@ -100,19 +118,24 @@ class EvalEngine:
             label_f = pickle.load(open(label_path, "rb"))
             print("Loading predictions")
             for key, pred in pred_f.items():
+                #if key != "MAPS_MUS-chpn-p4_ENSTDkAm":
+                #    continue
                 pred = pred[:]
                 ll = label_f[key]
                 cont.append([pred, ll, key])
-                #if True:
-                #    break
+
             pred_f.close()
             generator = lambda: cont
         else:
             raise ValueError
 
-        lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode)
+        lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
         length = len(lprec)
-        print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f}".format(sum(lprec)/length, sum(lrec)/length, sum(lfs)/length))
+        avg_prec = sum(lprec)/length
+        avg_rec = sum(lrec)/length
+        avg_fs = sum(lfs)/length
+        print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f}".format(avg_prec, avg_rec, avg_fs))
+        return avg_prec, avg_rec, avg_fs
 
     @classmethod
     def predict_dataset(

@@ -1,7 +1,7 @@
 import os
 import argparse
 
-from project.configuration import DatasetInfo as dinfo
+from project.configuration import MapsDatasetInfo, MusicNetDatasetInfo, MaestroDatasetInfo
 from project.Feature.MapsFeatureExtraction import MapsFeatExt
 from project.Feature.MaestroFeatureExtraction import MaestroFeatExt
 from project.Feature.MusicNetFeatureExtraction import MusicNetFeatExt
@@ -9,21 +9,21 @@ from project.Feature.MusicNetFeatureExtraction import MusicNetFeatExt
 
 d_conf = {
     "Maps": {
-        "dataset_info": dinfo.Maps,
+        "dataset_info": MapsDatasetInfo,
         "processor": MapsFeatExt
     },
     "Maestro": {
-        "dataset_info": dinfo.Maestro,
+        "dataset_info": MaestroDatasetInfo,
         "processor": MaestroFeatExt
     },
     "MusicNet": {
-        "dataset_info": dinfo.MusicNet,
+        "dataset_info": MusicNetDatasetInfo,
         "processor": MusicNetFeatExt
     }
 }
 
 def main(args):
-    dinfo = d_conf[args.dataset]["dataset_info"]
+    dinfo = d_conf[args.dataset]["dataset_info"](args.dataset_path)
     proc_cls = d_conf[args.dataset]["processor"]
 
     paths = dinfo.train_wavs if args.phase=="train" else dinfo.test_wavs
@@ -47,6 +47,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Feature Processor")
     parser.add_argument("dataset", help="One of Maps, MusicNet, or Maestro", 
                         type=str, choices=["Maps", "MusicNet", "Maestro"])
+    parser.add_argument("dataset_path", help="Path to the downloaded dataset",
+                        type=str)
     parser.add_argument("-p", "--phase", help="Generate training feature or testing feature. Default: %(default)s",
                         type=str, default="train", choices=["train", "test"])
     parser.add_argument("-n", "--piece-per-file", help="Number of pieces should be included in one generated file",

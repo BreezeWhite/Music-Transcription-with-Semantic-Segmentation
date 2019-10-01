@@ -7,6 +7,7 @@ class MusicNetFeatExt(base.BaseFeatExt):
     # Override
     def load_label(self, file_path, sample_rate=44100):
         content = []
+        last_sec = 0
         with open(file_path, 'r') as f:
             reader = csv.DictReader(f, delimiter=',')
             max_sample = 0
@@ -21,8 +22,6 @@ class MusicNetFeatExt(base.BaseFeatExt):
 
                 cc = LabelFmt(start_time, end_time, instrument, note, start_beat, end_beat, note_value)
                 content.append(cc)
-                
-                max_sample = max(max_sample, end_time)
+                last_sec = max(last_sec, end_time)
 
-        last_sec = max_sample/sample_rate
         return content, last_sec

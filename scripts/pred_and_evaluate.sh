@@ -1,10 +1,10 @@
 #!/bin/bash
 
-MODE=frame
-FEATURE_PATH=/data/Maps/test_feature
-MODEL_PATH=./model/Maps-Attn-W4.2.1
-PRED_SAVE_PATH=$FEATURE_PATH/prediction
-PRED_SAVE_PATH=./prediction/maps_attn
+MODE=note
+FEATURE_PATH=/data/MusicNet/test_feature
+MODEL_PATH=./model/MusicNet-Attn-W4.2
+PRED_SAVE_PATH=./prediction/musicnet_attn
+
 
 cd ..
 python3 Evaluation.py --help
