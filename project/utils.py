@@ -65,7 +65,7 @@ def label_conversion(label, tid,
                     new_l[t, pr, ii] = insts[it][1]
                 else:
                     new_l[t, pr, ii] = 1
-    new_l[:,:,0] = 1 - new_l[:,:,1]
+    new_l[:,:,0] = 1 - np.sum(new_l[:,:,1:], axis=2)
 
     h = new_l.shape[1]
     p_b = (feature_num-h) // 2

@@ -2,7 +2,7 @@
 import numpy as np
 
 from scipy.special import expit
-from project.Evaluation.eval_utils import cut_frame, cut_batch_pred
+from project.Evaluate.eval_utils import cut_frame, cut_batch_pred
 
 
 def predict(features, model, labels=None):
