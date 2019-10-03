@@ -37,7 +37,7 @@ def focal_loss(prediction_tensor, target_tensor, weight=None, alpha=0.25, gamma=
         weight = tf.constant(weight, dtype=per_entry_cross_ent.dtype)
         per_entry_cross_ent *= weight
 
-    return tf.reduce_mean(per_entry_cross_ent * weight)
+    return tf.reduce_mean(per_entry_cross_ent)
 
 def sparse_loss(yTrue, yPred, weight=None):
     loss = focal_loss(yPred, yTrue, weight=weight)

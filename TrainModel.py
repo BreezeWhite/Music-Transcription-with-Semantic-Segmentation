@@ -4,7 +4,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 
 import argparse
 
-from project.LabelType import BaseLabelType
+from project.LabelType import BaseLabelType, MusicNetLabelType
 from project.utils import load_model, save_model, model_info
 from project.configuration import HarmonicNum
 from project.Models.model import seg, sparse_loss
@@ -86,6 +86,8 @@ def main(args):
     # Label type
     mode = "frame_onset"
     l_type = BaseLabelType(mode, timesteps=timesteps)
+    mode = "multi_instrument_frame"
+    l_type = MusicNetLabelType(mode, timesteps=timesteps)
 
     # Number of output classes
     out_classes = l_type.get_out_classes()
@@ -102,8 +104,6 @@ def main(args):
                 ch_num = HarmonicNum * 2
                 channels = [i for i in range(ch_num)]
                 feature_type = "HCFP"
-            if args.multi_instruments:
-                out_classes = 12 # There are total 11 types of instruments in MusicNet
 
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
@@ -144,7 +144,13 @@ def main(args):
     if not os.path.exists(out_model_name):
         os.makedirs(out_model_name)
     save_model(model, out_model_name, **hparams)
-    loss_func = lambda label,pred: sparse_loss(label, pred, weight=[1,1,2.5])
+
+    # Weighted loss
+    weight = [1, 1, 2.5]
+    weight = None
+    if weight is not None:
+        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weights), out_classes)
+    loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
     
     # Use multi-gpu to train the model
     if True:
