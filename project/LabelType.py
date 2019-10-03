@@ -65,6 +65,23 @@ class BaseLabelType:
 
         return frm_on_off
 
+
+class MusicNetLabelType(BaseLabelType):
+    def customized_mode(self, mode):
+        if mode == "multi_instrument_frame":
+            self.conversion_func = self.multi_inst_frm
+            self.out_classes = 12
+        else:
+            self.conversion_func = None
+            self.out_classes = none
+            return False
+
+        return True
+
+    def multi_inst_frm(self, label, tid):
+        return self.l_conv(label, tid)
+
+
 if __name__ == "__main__":
     ltype = BaseLabelType("frame")
     try:
