@@ -16,9 +16,9 @@ from keras.utils import multi_gpu_model
 import tensorflow as tf
 
 dataset_paths = {
-    "Maestro":  "/media/data/Maestro",
-    "MusicNet": "/media/data/MusicNet",
-    "Maps":     "/media/data/Maps"
+    "Maestro":  "/data/Maestro",
+    "MusicNet": "/data/MusicNet",
+    "Maps":     "/data/Maps"
 }
 
 dataflow_cls = {
@@ -147,7 +147,7 @@ def main(args):
     loss_func = lambda label,pred: sparse_loss(label, pred, weight=[1,1,2.5])
     
     # Use multi-gpu to train the model
-    if True and False:
+    if True:
         para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
         para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
         model = para_model
