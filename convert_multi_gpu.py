@@ -7,8 +7,8 @@ from tensor2tensor.layers.common_attention import local_attention_2d, split_head
 from keras.models import model_from_yaml
 
 
-model_name = "./model/Maestro-Attn-W4.2"
-save_name = "./Maestro-Attn-W4.2-SingleGPU"
+model_name = "./model/MusicNet-Attn-W4.2"
+save_name = "./MusicNet-Attn-W4.2-SingleGPU"
 
 model = load_model(model_name)
 m_info = model_info(model_name)

@@ -32,7 +32,7 @@ class EvalEngine:
         for idx, (pred, label, key) in enumerate(generator(), 1):
             #draw(pred[:,:,2])
             midi = PostProcess(pred, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
-            #midi.write(key+".mid") if mode=="note" else midi.write(key+"_frame.mid")
+            midi.write(key+".mid") if mode=="note" else midi.write(key+"_frame.mid")
             p, r, f = eval_func(midi, label)
             print("{}.  Prec: {:.4f}, Rec: {:.4f}, F: {:.4f} {}".format(idx, p, r, f, key))
             prec.append(p)
@@ -61,14 +61,14 @@ class EvalEngine:
         # The input pred should be thresholded
         est_interval, est_hz = gen_onsets_info_from_midi(pred, inst_num=inst_num, t_unit=t_unit)
         ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
-        #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
+        plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
 
         try:
             out = mir_eval.transcription.precision_recall_f1_overlap(
                 ref_interval, ref_hz, 
                 est_interval, est_hz, 
                 offset_ratio=None,
-                onset_tolerance=0.05
+                onset_tolerance=0.06
             )
         except ValueError as expt:
             print(expt)
@@ -86,7 +86,7 @@ class EvalEngine:
         pred_save_path=None,
         pred_path=None,
         label_path=None,
-        onset_th=5, 
+        onset_th=7, 
         dura_th=1, 
         frm_th=1,
         t_unit=0.02
@@ -118,8 +118,8 @@ class EvalEngine:
             label_f = pickle.load(open(label_path, "rb"))
             print("Loading predictions")
             for key, pred in pred_f.items():
-                #if key != "MAPS_MUS-chpn-p4_ENSTDkAm":
-                #    continue
+                if key != "2556":
+                    continue
                 pred = pred[:]
                 ll = label_f[key]
                 cont.append([pred, ll, key])

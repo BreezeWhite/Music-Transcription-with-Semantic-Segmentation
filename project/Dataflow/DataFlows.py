@@ -41,7 +41,7 @@ class MaestroDataflow(BaseDataflow):
         else:
             raise TypeError
 
-        hdfs = self.parse_files(path, ".hdf")[:1]
+        hdfs = self.parse_files(path, ".hdf")
         # feature = self.parse_hdf(hdfs, use_ram=use_ram)
         # lbs = [a.replace(".hdf", ".pickle") for a in hdfs]
         # label = self.parse_pickle(lbs)
