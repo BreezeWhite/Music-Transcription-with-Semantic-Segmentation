@@ -4,6 +4,8 @@ MODE=note
 PRED_PATH=./prediction/musicnet_attn/MusicNet-Attn-W4.2_predictions.hdf
 LABEL_PATH=./prediction/musicnet_attn/MusicNet-Attn-W4.2_labels.pickle
 
+#PRED_PATH=/media/data/maps/test_feature/prediction/Maestro-Attn-W4.2_predictions.hdf
+#LABEL_PATH=/media/data/maps/test_feature/prediction/Maestro-Attn-W4.2_labels.pickle
 
 cd ..
 #python3 Evaluation.py --help

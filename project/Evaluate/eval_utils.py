@@ -11,6 +11,23 @@ from project.utils import label_conversion
 from project.configuration import MusicNetMIDIMapping
 from project.central_frequency_352 import CentralFrequency
 
+def cut_frame(frm, ori_feature_size=352, feature_num=384):
+    feat_num = frm.shape[1]
+    assert(feat_num==feature_num)
+
+    cb = (feat_num-ori_feature_size) // 2
+    c_range = range(cb, cb+ori_feature_size)
+    
+    return frm[:, c_range]
+
+def cut_batch_pred(b_pred):
+    t_len = len(b_pred[0])
+    cut_rr = range(round(t_len*0.25), round(t_len*0.75))
+    cut_pp = []
+    for i in range(len(b_pred)):
+        cut_pp.append(b_pred[i][cut_rr])
+    
+    return np.array(cut_pp)
 
 def create_batches(feature, b_size, timesteps, feature_num=384):
     frms = np.ceil(len(feature) / timesteps)
@@ -40,7 +57,7 @@ def create_batches(feature, b_size, timesteps, feature_num=384):
     
     return BSS
 
-def roll_down_sample(data, occur_num=3, base=88):
+def roll_down_sample(data, occur_num=2, base=88):
     # The input argument "data" should be thresholded 
 
     total_roll = data.shape[1]

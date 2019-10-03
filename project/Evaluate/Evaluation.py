@@ -118,8 +118,8 @@ class EvalEngine:
             label_f = pickle.load(open(label_path, "rb"))
             print("Loading predictions")
             for key, pred in pred_f.items():
-                if key != "2556":
-                    continue
+                #if key != "2556":
+                #    continue
                 pred = pred[:]
                 ll = label_f[key]
                 cont.append([pred, ll, key])
