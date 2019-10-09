@@ -86,7 +86,7 @@ class EvalEngine:
         pred_save_path=None,
         pred_path=None,
         label_path=None,
-        onset_th=7.5, 
+        onset_th=7, 
         dura_th=1, 
         frm_th=1,
         t_unit=0.02

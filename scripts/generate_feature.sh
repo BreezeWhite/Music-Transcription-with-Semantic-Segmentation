@@ -2,7 +2,7 @@
 
 DATASET=MusicNet
 D_PATH=/media/data/MusicNet
-PHASE=test
+PHASE=train
 PIECE_PER_FILE=20
 OUTPUT=/media/data/MusicNet/${PHASE}_feature
 
