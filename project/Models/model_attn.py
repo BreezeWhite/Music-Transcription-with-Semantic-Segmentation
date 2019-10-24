@@ -238,7 +238,7 @@ def seg(feature_num=128,
     de_l2 = Dropout(0.4)(de_l2)
     de_l2 = Conv2D(2 ** 6, (1, 1), strides=(1, 1), padding="same")(de_l2)
     de_l2 = add([de_l2, skip])
-    de_l3 = transpose_conv_block(de_l2, 2 ** 5, (3, 3), strides=(2, 2))
+    de_l3 = transpose_conv_block(de_l2, 2 ** 6, (3, 3), strides=(2, 2))
     layer_out.append(de_l3)
 
     skip = de_l3
@@ -246,9 +246,9 @@ def seg(feature_num=128,
     #en_l1 = MultiHead_Attention(en_l1, query_shape=(25, 16))
     de_l3 = concatenate([de_l3, BatchNormalization()(Activation("relu")(en_l1))])
     de_l3 = Dropout(0.4)(de_l3)
-    de_l3 = Conv2D(2 ** 5, (1, 1), strides=(1, 1), padding="same")(de_l3)
+    de_l3 = Conv2D(2 ** 6, (1, 1), strides=(1, 1), padding="same")(de_l3)
     de_l3 = add([de_l3, skip])
-    de_l4 = transpose_conv_block(de_l3, 2 ** 5, (3, 3), strides=(2, 2))
+    de_l4 = transpose_conv_block(de_l3, 2 ** 6, (3, 3), strides=(2, 2))
     layer_out.append(de_l4)
 
     de_l4 = BatchNormalization()(Activation("relu")(de_l4))

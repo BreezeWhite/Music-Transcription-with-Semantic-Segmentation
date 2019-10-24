@@ -1,11 +1,12 @@
 #!/bin/bash
 
-MODE=note
-PRED_PATH=./prediction/musicnet_attn/MusicNet-Attn-W4.2_predictions.hdf
-LABEL_PATH=./prediction/musicnet_attn/MusicNet-Attn-W4.2_labels.pickle
+MODE=frame
+PRED_PATH=./prediction/musicnet_multi_prediction/MusicNet-Attn-Multi-W4.2_predictions.hdf
+LABEL_PATH=./prediction/musicnet_multi_prediction/MusicNet-Attn-Multi-W4.2_labels.pickle
 
-#PRED_PATH=/media/data/maps/test_feature/prediction/Maestro-Attn-W4.2_predictions.hdf
-#LABEL_PATH=/media/data/maps/test_feature/prediction/Maestro-Attn-W4.2_labels.pickle
+MODE=note
+PRED_PATH=./prediction/maps_attn/Maps-Attn-W4.2.1_predictions.hdf
+LABEL_PATH=./prediction/maps_attn/Maps-Attn-W4.2.1_labels.pickle
 
 cd ..
 #python3 Evaluation.py --help

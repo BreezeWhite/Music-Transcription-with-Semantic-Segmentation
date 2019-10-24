@@ -86,7 +86,7 @@ def main(args):
     # Label type
     mode = "frame_onset"
     l_type = BaseLabelType(mode, timesteps=timesteps)
-    mode = "multi_instrument_frame"
+    mode = "multi_instrument_note"
     l_type = MusicNetLabelType(mode, timesteps=timesteps)
 
     # Number of output classes
@@ -146,10 +146,15 @@ def main(args):
     save_model(model, out_model_name, **hparams)
 
     # Weighted loss
-    weight = [1, 1, 2.5]
-    weight = None
+    weight = [1, 1, 2.5] # Piano-only note mode
+    weight = None # Frame mode
+    # Multi-instrument note mode
+    weight = [1 for i in range(23)]
+    for i in range(11):
+        weight[i*2+1] = 2.5
+    ##
     if weight is not None:
-        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weights), out_classes)
+        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
     loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
     
     # Use multi-gpu to train the model

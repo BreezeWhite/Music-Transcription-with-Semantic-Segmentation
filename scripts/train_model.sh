@@ -1,6 +1,6 @@
 #!/bin/bash
 
-out_model=MusicNet-Attn-W4.2
+out_model=MusicNet-Attn-Note-W4.2
 epoch=12
 early_stop=6
 

@@ -8,7 +8,7 @@ import librosa
 import mir_eval
 import numpy as np
 
-from project.configuration import MusicNetMIDIMapping
+from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
 from project.utils import load_model, model_info
 from project.Evaluate.predict import predict
 from project.Evaluate.eval_utils import * 
@@ -30,22 +30,63 @@ class EvalEngine:
         lowest_pitch = librosa.note_to_midi("A0")
         prec, rec, fs = [], [], []
         for idx, (pred, label, key) in enumerate(generator(), 1):
-            #draw(pred[:,:,2])
-            midi = PostProcess(pred, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
-            midi.write(key+".mid") if mode=="note" else midi.write(key+"_frame.mid")
-            p, r, f = eval_func(midi, label)
-            print("{}.  Prec: {:.4f}, Rec: {:.4f}, F: {:.4f} {}".format(idx, p, r, f, key))
-            prec.append(p)
-            rec.append(r)
-            fs.append(f)
+            print("{}. {}".format(idx, key))
+            
+            # Create some variable and validate the threshold
+            ch_per_inst = 0
+            use_list_th = False
+            on_th = [onset_th for i in range(pred.shape[-1])]
+            du_th = [dura_th for i in range(pred.shape[-1])]
+            fr_th = [frm_th for i in range(pred.shape[-1])]
+            if mode=="note":
+                ch_per_inst = 2
+                if isinstance(onset_th, list) or isinstance(dura_th, list):
+                    assert(len(onset_th)==len(dura_th)==pred.shape[-1]-1)
+                    on_th = onset_th
+                    du_th = dura_th
+            elif mode=="frame":
+                ch_per_inst = 1
+                pred = np.dstack([pred[:,:,0], norm(pred[:,:,1:])])
+                if isinstance(frm_th, list):
+                    assert(len(frm_th)==pred.shape[-1]-1)
+                    use_list_th = True
+                    fr_th = frm_th
+            
+            iters = (pred.shape[-1]-1) // ch_per_inst
+            ch_p, ch_r, ch_f = 0, 0, 0
+            for i in range(iters):
+                ch_list = [0] + [i*ch_per_inst+k for k in range(1, ch_per_inst+1)]
+                sub_pred = pred[:,:,ch_list]
+                midi = PostProcess(sub_pred, mode=mode, onset_th=on_th[i], dura_th=du_th[i], frm_th=fr_th[i])
+                inst = MusicNet_Instruments[i]
+                inst_num = MusicNetMIDIMapping[inst]
+                
+                ####### Comment me
+                #midi.write("{}_{}.mid".format(key, inst)) if mode=="note" else midi.write("{}_{}_frame.mid".format(key, inst))
+                #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
+                #######
+
+                p, r, f = eval_func(midi, label, inst_num=inst_num)
+                ch_p += p
+                ch_r += r
+                ch_f += f
+                print("\t{} Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(MusicNet_Instruments[i], p, r, f))
+
+            ch_p /= iters
+            ch_r /= iters
+            ch_f /= iters
+            print("Final score. Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(ch_p, ch_r, ch_f))
+            prec.append(ch_p)
+            rec.append(ch_r)
+            fs.append(ch_f)
         return prec, rec, fs
 
     @classmethod
-    def evaluate_frame(cls, pred, label, t_unit=0.02):
-        inst_num = MusicNetMIDIMapping["Piano"]
+    def evaluate_frame(cls, pred, label, inst_num=1, t_unit=0.02):
+        #inst_num = MusicNetMIDIMapping["Piano"]
 
         # The input pred should be thresholded
-        est_time, est_hz = gen_frame_info_from_midi(pred, inst_num=inst_num, t_unit=t_unit) 
+        est_time, est_hz = gen_frame_info_from_midi(pred, t_unit=t_unit) 
         ref_time, ref_hz = gen_frame_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
         out = mir_eval.multipitch.metrics(ref_time, ref_hz, est_time, est_hz)
 
@@ -55,13 +96,13 @@ class EvalEngine:
         return precision, recall, fscore
 
     @classmethod
-    def evaluate_onsets(cls, pred, label, t_unit=0.02):
-        inst_num = MusicNetMIDIMapping["Piano"]
+    def evaluate_onsets(cls, pred, label, inst_num=1, t_unit=0.02):
+        #inst_num = MusicNetMIDIMapping["Piano"]
 
         # The input pred should be thresholded
-        est_interval, est_hz = gen_onsets_info_from_midi(pred, inst_num=inst_num, t_unit=t_unit)
+        est_interval, est_hz = gen_onsets_info_from_midi(pred, t_unit=t_unit)
         ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
-        plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
+        #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
 
         try:
             out = mir_eval.transcription.precision_recall_f1_overlap(
@@ -78,19 +119,17 @@ class EvalEngine:
         return precision, recall, fscore
 
     @classmethod
-    def evaluate_dataset(
-        cls, 
-        mode,
-        feature_path=None,
-        model_path=None,
-        pred_save_path=None,
-        pred_path=None,
-        label_path=None,
-        onset_th=7, 
-        dura_th=1, 
-        frm_th=1,
-        t_unit=0.02
-    ):
+    def evaluate_dataset(cls, 
+                         mode,
+                         feature_path=None,
+                         model_path=None,
+                         pred_save_path=None,
+                         pred_path=None,
+                         label_path=None,
+                         onset_th=7, 
+                         dura_th=1, 
+                         frm_th=3,
+                         t_unit=0.02):
         """
         Parameters:
             mode: Either one of "note" or "frame".
@@ -98,6 +137,9 @@ class EvalEngine:
             pred_path: Path to the prediction hdf file
             pred_save_path: Path to save the prediction, optional.
             label_path: Path to the label hdf file generated after executeing predict_dataset().
+            onset_th: onset threshold (note mode)
+            dura_th: duration channel threshold (note mode)
+            frm_th: frame threshold (frame mode)
             t_unit: Time unit of each frame in second.
             
         You should either provide one of (feature_path, model_path) pair or (pred_path, label_path) pair.
@@ -118,8 +160,10 @@ class EvalEngine:
             label_f = pickle.load(open(label_path, "rb"))
             print("Loading predictions")
             for key, pred in pred_f.items():
-                #if key != "2556":
+                #### Comment me
+                #if key != "1759":
                 #    continue
+                ####
                 pred = pred[:]
                 ll = label_f[key]
                 cont.append([pred, ll, key])
@@ -127,7 +171,7 @@ class EvalEngine:
             pred_f.close()
             generator = lambda: cont
         else:
-            raise ValueError
+            raise ValueError("Unknown parameter combination")
 
         lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
         length = len(lprec)
