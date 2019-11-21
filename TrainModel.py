@@ -7,7 +7,7 @@ import argparse
 from project.LabelType import BaseLabelType, MusicNetLabelType
 from project.utils import load_model, save_model, model_info
 from project.configuration import HarmonicNum
-from project.Models.model import seg, sparse_loss
+from project.Models.model import seg, sparse_loss, smooth_loss, mctl_loss
 from project.Models import model_attn
 from project.Dataflow import DataFlows
 
@@ -155,7 +155,7 @@ def main(args):
     ##
     if weight is not None:
         assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
-    loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    loss_func = lambda label,pred: mctl_loss(label, pred, weight=weight)
     
     # Use multi-gpu to train the model
     if True:
@@ -166,9 +166,9 @@ def main(args):
         model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
     # create callbacks
-    earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)
+    earlystop   = callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
     checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
-                                            monitor="val_acc", save_best_only=False, save_weights_only=True)
+                                            monitor="val_loss", save_best_only=False, save_weights_only=True)
     tensorboard = callbacks.TensorBoard(log_dir=os.path.join("tensorboard", args.output_model_name),
                                         write_images=True)
     callback_list = [checkpoint, earlystop, tensorboard]

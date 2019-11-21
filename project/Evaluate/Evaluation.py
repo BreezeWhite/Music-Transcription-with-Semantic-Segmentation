@@ -12,7 +12,7 @@ from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
 from project.utils import load_model, model_info
 from project.Evaluate.predict import predict
 from project.Evaluate.eval_utils import * 
-from project.postprocess import PostProcess, down_sample
+from project.postprocess import MultiPostProcess, down_sample
 
 from tmp_debug import plot_onsets_info, draw
 
@@ -25,7 +25,8 @@ class EvalEngine:
              mode="note", 
              onset_th=7, 
              dura_th=1, 
-             frm_th=1, 
+             frm_th=1,
+             inst_th=1.1,
              t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
         prec, rec, fs = [], [], []
@@ -33,31 +34,22 @@ class EvalEngine:
             print("{}. {}".format(idx, key))
             
             # Create some variable and validate the threshold
-            ch_per_inst = 0
-            use_list_th = False
-            on_th = [onset_th for i in range(pred.shape[-1])]
-            du_th = [dura_th for i in range(pred.shape[-1])]
-            fr_th = [frm_th for i in range(pred.shape[-1])]
             if mode=="note":
                 ch_per_inst = 2
-                if isinstance(onset_th, list) or isinstance(dura_th, list):
-                    assert(len(onset_th)==len(dura_th)==pred.shape[-1]-1)
-                    on_th = onset_th
-                    du_th = dura_th
             elif mode=="frame":
                 ch_per_inst = 1
-                pred = np.dstack([pred[:,:,0], norm(pred[:,:,1:])])
-                if isinstance(frm_th, list):
-                    assert(len(frm_th)==pred.shape[-1]-1)
-                    use_list_th = True
-                    fr_th = frm_th
+            elif mode=="offset":
+                raise NotImplementedError
+            else:
+                raise ValueError
             
+            midi = MultiPostProcess(pred, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th, inst_th=inst_th, t_unit=t_unit)
+            inst_name = [inst.name for inst in midi.instruments]
+
             iters = (pred.shape[-1]-1) // ch_per_inst
             ch_p, ch_r, ch_f = 0, 0, 0
+            num_insts = 0 
             for i in range(iters):
-                ch_list = [0] + [i*ch_per_inst+k for k in range(1, ch_per_inst+1)]
-                sub_pred = pred[:,:,ch_list]
-                midi = PostProcess(sub_pred, mode=mode, onset_th=on_th[i], dura_th=du_th[i], frm_th=fr_th[i])
                 inst = MusicNet_Instruments[i]
                 inst_num = MusicNetMIDIMapping[inst]
                 
@@ -65,16 +57,38 @@ class EvalEngine:
                 #midi.write("{}_{}.mid".format(key, inst)) if mode=="note" else midi.write("{}_{}_frame.mid".format(key, inst))
                 #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
                 #######
+                
+                if inst in inst_name:
+                    inst_idx = inst_name.index(inst)
+                    assert(midi.instruments[inst_idx].name==inst)
+                    midi_notes = midi.instruments[inst_idx].notes
+                    out = eval_func(midi_notes, label, inst_num=inst_num)
+                    if out is not None:
+                        # Label has instrument and also prediction
+                        num_insts += 1
+                        p, r, f = out
+                    else:
+                        # Label doesn't have instrument but prediction has
+                        num_insts += 1
+                        p, r, f = 0, 0, 0
+                else:
+                    out = eval_func(midi.instruments[0].notes, label, inst_num=inst_num)
+                    if out is not None:
+                        # Label has instrument but prediction doesn't
+                        num_insts += 1
+                        p, r, f = 0, 0, 0
+                    else:
+                        # Label and prediction neither has instrument
+                        continue
 
-                p, r, f = eval_func(midi, label, inst_num=inst_num)
                 ch_p += p
                 ch_r += r
                 ch_f += f
                 print("\t{} Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(MusicNet_Instruments[i], p, r, f))
 
-            ch_p /= iters
-            ch_r /= iters
-            ch_f /= iters
+            ch_p /= num_insts
+            ch_r /= num_insts
+            ch_f /= num_insts
             print("Final score. Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(ch_p, ch_r, ch_f))
             prec.append(ch_p)
             rec.append(ch_r)
@@ -83,13 +97,15 @@ class EvalEngine:
 
     @classmethod
     def evaluate_frame(cls, pred, label, inst_num=1, t_unit=0.02):
-        #inst_num = MusicNetMIDIMapping["Piano"]
-
         # The input pred should be thresholded
-        est_time, est_hz = gen_frame_info_from_midi(pred, t_unit=t_unit) 
         ref_time, ref_hz = gen_frame_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
-        out = mir_eval.multipitch.metrics(ref_time, ref_hz, est_time, est_hz)
+        if len(ref_time) == 0:
+            # The instrument is not presented in this piece
+            return None
 
+        est_time, est_hz = gen_frame_info_from_notes(pred, t_unit=t_unit) 
+
+        out = mir_eval.multipitch.metrics(ref_time, ref_hz, est_time, est_hz)
         precision, recall, accuracy = out[0:3]
         prec_chroma, rec_chroma, acc_chroma = out[7:10]
         fscore = 2*precision*recall/(precision+recall+1e-8)
@@ -97,12 +113,16 @@ class EvalEngine:
 
     @classmethod
     def evaluate_onsets(cls, pred, label, inst_num=1, t_unit=0.02):
-        #inst_num = MusicNetMIDIMapping["Piano"]
-
         # The input pred should be thresholded
-        est_interval, est_hz = gen_onsets_info_from_midi(pred, t_unit=t_unit)
         ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
+        if len(ref_interval) == 0:
+            # The instrument is not presented in this piece
+            return None
+
+        est_interval, est_hz = gen_onsets_info_from_notes(pred, t_unit=t_unit)
+        ### Comment me
         #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
+        ###
 
         try:
             out = mir_eval.transcription.precision_recall_f1_overlap(
@@ -126,7 +146,8 @@ class EvalEngine:
                          pred_save_path=None,
                          pred_path=None,
                          label_path=None,
-                         onset_th=7, 
+                         inst_th=1.1,
+                         onset_th=9, 
                          dura_th=1, 
                          frm_th=3,
                          t_unit=0.02):
@@ -161,8 +182,10 @@ class EvalEngine:
             print("Loading predictions")
             for key, pred in pred_f.items():
                 #### Comment me
-                #if key != "1759":
+                #if key != "1819":
                 #    continue
+                #if len(cont) >= 20:
+                #    break
                 ####
                 pred = pred[:]
                 ll = label_f[key]
@@ -173,7 +196,7 @@ class EvalEngine:
         else:
             raise ValueError("Unknown parameter combination")
 
-        lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
+        lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode, inst_th=inst_th, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
         length = len(lprec)
         avg_prec = sum(lprec)/length
         avg_rec = sum(lrec)/length

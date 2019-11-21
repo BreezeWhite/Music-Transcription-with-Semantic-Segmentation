@@ -99,11 +99,10 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     
     return note
 
-def gen_onsets_info_from_midi(midi, inst_num=1, t_unit=0.02):
+def gen_onsets_info_from_notes(midi_notes, t_unit=0.02):
     intervals = []
     pitches = []
-    inst = midi.instruments[inst_num-1]
-    for note in inst.notes:
+    for note in midi_notes:
         onset = note.start
         intervals.append([onset, onset+t_unit*2])
         pitches.append(librosa.midi_to_hz(note.pitch))
@@ -128,7 +127,7 @@ def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
     return np.array(intervals), np.array(pitches)
 
 def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, mpe=True, ori_feature_size=88, feature_num=88)
+    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
     return gen_onsets_info(roll[:,:,ch], t_unit=t_unit)
@@ -161,9 +160,10 @@ def gen_onsets_info(data, t_unit=0.02):
     
     return intervals, pitches
 
-def gen_frame_info_from_midi(midi, t_unit=0.02):
-    inst = midi.instruments[0]
+def gen_frame_info_from_notes(midi_notes, t_unit=0.02):
     tmp_midi = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(program=0)
+    inst.notes += midi_notes
     tmp_midi.instruments.append(inst)
     piano_roll = tmp_midi.get_piano_roll(fs=round(1/t_unit)).transpose()
     low = librosa.note_to_midi("A0")

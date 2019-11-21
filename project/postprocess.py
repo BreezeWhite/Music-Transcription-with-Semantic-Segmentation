@@ -1,5 +1,8 @@
+import sys
+sys.path.append("./")
 
 import h5py
+import math
 import pretty_midi
 import numpy as np
 import matplotlib
@@ -7,7 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from librosa import note_to_midi
-from project.configuration import MusicNet_Instruments
+from project.configuration import MusicNet_Instruments, MusicNetMIDIMapping
 from project.Evaluate.eval_utils import roll_down_sample, find_occur
 
 def plot3(pred):
@@ -170,20 +173,26 @@ def down_sample(pred):
 def norm(data):
     return (data-np.mean(data))/np.std(data)
 
+def draw(data, out_name="roll.png"):
+    plt.imshow(data.transpose(), origin="lower", aspect="auto")
+    plt.savefig(out_name, dpi=250)
+
 def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02):
     if mode == "note":
         onset = pred[:,:,2]
         dura = pred[:,:,1]
         
         onset = np.where(onset<dura, 0, onset)
-        
+
         # Normalize along each channel and filter by the nomalized value
         # onset channel
-        onset = np.where(norm(onset)<onset_th, 0, onset)
+        norm_onset = norm(onset)
+        onset = np.where(norm_onset<onset_th, 0, norm_onset)
         pred[:,:,2] = onset
-        
+    
         # duration channel
-        dura = np.where(norm(dura)<dura_th, 0, dura)
+        norm_dura = norm(dura)
+        dura = np.where(norm_dura<dura_th, 0, norm_dura)
         pred[:,:,1] = dura
         
         notes = infer_piece(down_sample(pred))
@@ -218,40 +227,81 @@ def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02)
 
     return midi
         
-def MultiPostProcess(pred, onset_th=5, dura_th=2, note_num_th=5, t_unit=0.02):
-    ch_per_inst = 2
+def threshold_type_converter(th, length):
+    if isinstance(th, list):
+        assert(len(th)==length)
+    else:
+        th = [th for _ in range(length)]
+    return th
+
+def entropy(data, bins=200):
+    min_v = -20#np.min(data)
+    max_v = 30#np.max(data)
+    interval = (max_v-min_v)/bins
+    cut_offs = [min_v+i*interval for i in range(bins+1)]
+    discrete_v = np.digitize(data, cut_offs)
+    _, counts = np.unique(discrete_v, return_counts=True)
+    probs = counts/np.sum(counts)
+    ent = 0
+    for p in probs:
+        ent -= p * math.log(p, math.e)
+
+    return ent
+
+def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th=0.75, t_unit=0.02):
+    """ Function for post-process multi-instrument prediction
+    Parameters:
+        mode: 'note' or 'frame'
+        onset_th: Threshold of onset channel. Type of list or float
+        dura_th: Threshold of duration channel. Type of list or float
+        inst_th: Threshold of deciding a instrument is present or not according to Std. of prediction.
+    """
+    if mode == 'note':
+        ch_per_inst = 2
+    elif mode == 'frame':
+        ch_per_inst = 1
+    elif mode == 'offset':
+        raise NotImplementedError
+    else:
+        raise ValueError
     assert((pred.shape[-1]-1)%ch_per_inst == 0)
     
-    norm_pred = norm(pred[:,:,1:])
-    iters = norm_pred.shape[-1]//ch_per_inst
-    if isinstance(onset_th, list):
-        assert(len(onset_th)==iters)
-    else:
-       onset_th = [onset_th for _ in range(iters)]
-    if isinstance(dura_th, list):
-       assert(len(dura_th)==iters)
-    else:
-       dura_th = [dura_th for _ in range(iters)]
+    ch_container = []
+    iters = (pred.shape[-1]-1)//ch_per_inst
+    for i in range(ch_per_inst):
+        # First item would be duration channel
+        # Second item would be onset channel
+        # Third item would be offset channel (not yet implement)
+        item = pred[:,:,[it*ch_per_inst+i+1 for it in range(iters)]]
+        ch_container.append(norm(item))
+
+    onset_th = threshold_type_converter(onset_th, iters)
+    dura_th = threshold_type_converter(dura_th, iters)
+    frm_th = threshold_type_converter(frm_th, iters)
 
     zeros = np.zeros((pred.shape[:-1]))
     midis = []
     note_num = []
-    for i in range(iters):
-        pp = norm_pred[:,:,i*ch_per_inst:i*ch_per_inst+1]
-        pp = np.dstack([zeros, pp])
-        midi = PostProcess(pp, mode="note", onset_th=onset_th[i], dura_th=dura_th[i], t_unit=t_unit)
-        midis.append(midi)
-        note_num.append(len(midi.instruments[0].notes))
-
-    note_num_std = (np.array(note_num)-np.mean(note_num))/np.std(note_num)
     out_midi = pretty_midi.PrettyMIDI()
-    for idx, midi in enumerate(midis):
-        if note_num_std[idx] < note_num_th:
+    for i in range(iters):
+        normed_ch = []
+        std = 0
+        ent = 0
+        for ii in range(ch_per_inst):
+            ch = ch_container[ii][:,:,i]
+            std += np.std(ch)
+            ent += entropy(ch)
+            normed_ch.append(ch)
+        print("std: {:.2f} ent: {:.2f} mult: {:.2f}".format(std, ent, std*ent))
+        if std/ch_per_inst < inst_th:
             continue
-        
-        inst_name = MusicNet_Instruments[idx]
-        inst_program = pretty_midi.instrument_name_to_program(inst_name)
-        inst = pretty_midi.Instrument(program=inst_program)
+
+        pp = np.dstack([zeros] + normed_ch)
+        midi = PostProcess(pp, mode=mode, onset_th=onset_th[i], dura_th=dura_th[i], frm_th=frm_th[i], t_unit=t_unit)
+
+        inst_name = MusicNet_Instruments[i]
+        program = MusicNetMIDIMapping[inst_name]
+        inst = pretty_midi.Instrument(program=program-1, name=inst_name)
         inst.notes = midi.instruments[0].notes
         out_midi.instruments.append(inst)
 
@@ -259,17 +309,26 @@ def MultiPostProcess(pred, onset_th=5, dura_th=2, note_num_th=5, t_unit=0.02):
 
         
 if __name__ == "__main__":
-    f_name = "Maestro-Attn-W4.2_predictions.hdf"
+    f_name = "./prediction/musicnet_multi_note_prediction/MusicNet-Attn-Note-W4.2_predictions.hdf"
     p_in = h5py.File(f_name, "r")
-    pred = p_in["0"][:]
+    keys = list(p_in.keys())
+    print(keys)
+    pred = p_in["2298"][:]
     p_in.close()
+
+    for i in range(11):
+        plt.imshow(pred[:2000,:,i*2+1].transpose(), origin="lower", aspect="auto")
+        #plt.savefig("{}_frm.png".format(i), dpi=250)
+        plt.imshow(pred[:2000,:,i*2+2].transpose(), origin="lower", aspect="auto")
+        #plt.savefig("{}_onset.png".format(i), dpi=250)
     
-    pp = pred#[16744:22000]
-    midi = PostProcess(pp, mode="frame")
+    # midi = PostProcess(pred, mode="frame")
+    onset_th = [2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    midi = MultiPostProcess(pred, onset_th=5)#onset_th)
     midi.write("test.mid")
     
-    draw_roll(midi)   
-    plot3(pp)
+    #draw_roll(midi)   
+    #plot3(pp)
         
         
         

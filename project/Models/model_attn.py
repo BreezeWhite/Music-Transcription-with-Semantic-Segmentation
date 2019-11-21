@@ -191,7 +191,7 @@ def seg(feature_num=128,
     layer_out.append(en_l4)
 
     feature = en_l4
-    f_attn = MultiHead_Attention(feature, out_channel=32, query_shape=(100, 32))
+    f_attn = MultiHead_Attention(feature, out_channel=64, query_shape=(100, 32))
 
     #for i in range(multi_grid_layer_n):
     #    feature = BatchNormalization()(Activation("relu")(feature))

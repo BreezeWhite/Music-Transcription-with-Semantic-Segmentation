@@ -7,10 +7,9 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 
 from project.Evaluate.Evaluation import EvalEngine
 
-feature_path = "/data/MusicNet/test_feature"
-model_path = "../model/MusicNet-Attn-Note-W4.2"
-pred_save_path = "../prediction/musicnet_multi_prediction"
-pred_save_path = "../prediction/musicnet_multi_note_prediction"
+feature_path = "/data/MusicNet/val_feature"
+model_path = "../model/MusicNet-Attn-Note-Smooth-V1.0.2"
+pred_save_path = "../prediction/val_musicnet_smooth_v1.0.2"
 
 generator = EvalEngine.predict_dataset(feature_path, model_path, pred_save_path)
 
