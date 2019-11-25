@@ -248,7 +248,7 @@ def entropy(data, bins=200):
 
     return ent
 
-def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th=0.75, t_unit=0.02):
+def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th=0.95, t_unit=0.02):
     """ Function for post-process multi-instrument prediction
     Parameters:
         mode: 'note' or 'frame'
@@ -292,7 +292,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
             std += np.std(ch)
             ent += entropy(ch)
             normed_ch.append(ch)
-        print("std: {:.2f} ent: {:.2f} mult: {:.2f}".format(std, ent, std*ent))
+        print("std: {:.2f} ent: {:.2f} mult: {:.2f}".format(std/ch_per_inst, ent/ch_per_inst, std*ent/ch_per_inst**2))
         if std/ch_per_inst < inst_th:
             continue
 

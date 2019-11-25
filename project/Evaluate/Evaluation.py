@@ -26,7 +26,7 @@ class EvalEngine:
              onset_th=7, 
              dura_th=1, 
              frm_th=1,
-             inst_th=1.1,
+             inst_th=1,
              t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
         prec, rec, fs = [], [], []
@@ -184,8 +184,8 @@ class EvalEngine:
                 #### Comment me
                 #if key != "1819":
                 #    continue
-                #if len(cont) >= 20:
-                #    break
+                if len(cont) >= 20:
+                    break
                 ####
                 pred = pred[:]
                 ll = label_f[key]
