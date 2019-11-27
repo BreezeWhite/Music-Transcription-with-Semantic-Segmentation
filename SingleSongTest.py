@@ -19,8 +19,8 @@ from project.configuration import MusicNet_Instruments
 
 def main(args):
     # Pre-process features
-    assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again."
-    print("Processing features")
+    assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again. Given input: {}".format(audio.input_audio)
+    print("Processing features of input audio: {}".format(args.input_audio))
     Z, tfrL0, tfrLF, tfrLQ, t, cenf, f = feature_extraction(args.input_audio)
     
     # Post-process feature according to the configuration of model
@@ -59,6 +59,7 @@ def main(args):
     
     if args.to_midi is not None:
         midi.write(args.to_midi)
+        print("Midi written as {}".format(args.to_midi))
 
 if __name__ == "__main__":
     

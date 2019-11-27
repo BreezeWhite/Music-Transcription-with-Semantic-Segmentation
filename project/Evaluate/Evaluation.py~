@@ -25,7 +25,7 @@ class EvalEngine:
              mode="note", 
              onset_th=7, 
              dura_th=1, 
-             frm_th=0.5,
+             frm_th=1,
              inst_th=1,
              t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
@@ -147,9 +147,9 @@ class EvalEngine:
                          pred_path=None,
                          label_path=None,
                          inst_th=1.1,
-                         onset_th=7.5, 
+                         onset_th=9, 
                          dura_th=1, 
-                         frm_th=1.5,
+                         frm_th=3,
                          t_unit=0.02):
         """
         Parameters:
@@ -184,8 +184,8 @@ class EvalEngine:
                 #### Comment me
                 #if key != "1819":
                 #    continue
-                #if len(cont) >= 20:
-                #    break
+                if len(cont) >= 20:
+                    break
                 ####
                 pred = pred[:]
                 ll = label_f[key]
@@ -201,8 +201,7 @@ class EvalEngine:
         avg_prec = sum(lprec)/length
         avg_rec = sum(lrec)/length
         avg_fs = sum(lfs)/length
-        f_score = 2*avg_prec*avg_rec/(avg_prec+avg_rec)
-        print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f} Avg F-score: {:.4f}".format(avg_prec, avg_rec, f_score, avg_fs))
+        print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f}".format(avg_prec, avg_rec, avg_fs))
         return avg_prec, avg_rec, avg_fs
 
     @classmethod

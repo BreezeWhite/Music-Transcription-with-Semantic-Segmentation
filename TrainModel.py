@@ -149,7 +149,8 @@ def main(args):
     weight = None # Frame mode
     if weight is not None:
         assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
-    loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    loss_func = lambda label,pred: mctl_loss(label, pred, weight=weight)
     
     # Use multi-gpu to train the model
     if True:

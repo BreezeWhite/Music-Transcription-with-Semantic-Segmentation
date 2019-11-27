@@ -149,7 +149,7 @@ def feature_extraction(
         tc=1/4487.0,
         g=[0.24, 0.6, 1],
         NumPerOctave=48,
-        Down_fs=16000
+        Down_fs=44100
     ):
                        
     x, fs = sf.read(filename)

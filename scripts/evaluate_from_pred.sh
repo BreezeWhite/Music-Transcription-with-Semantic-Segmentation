@@ -1,19 +1,19 @@
 #!/bin/bash
 
-VERSION=1.0.2
-MODEL_NAME=MusicNet-Attn-Note-Smooth-V$VERSION
-PRED_FOLDER=musicnet_smooth_v$VERSION
+MODEL_NAME=Dilated-Conv-MusicNet-Note-Smooth
+PRED_FOLDER=dilated_conv_musicnet_note_smooth
+
+MODEL_NAME=Maestro-Attn-V4.2.1
+PRED_FOLDER=maestro_attn_v4.2.1
+
+MODEL_NAME=Maps-Attn-W4.2.1
+PRED_FOLDER=maps_attn
 
 MODE=note
 PRED_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
 LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
 
-#MODE=note
-#PRED_PATH=./prediction/maps_attn/Maps-Attn-W4.2.1_predictions.hdf
-#LABEL_PATH=./prediction/maps_attn/Maps-Attn-W4.2.1_labels.pickle
-
 cd ..
-#python3 Evaluation.py --help
 python3 Evaluation.py $MODE \
     -p $PRED_PATH \
     -l $LABEL_PATH

@@ -7,7 +7,6 @@ PRED_SAVE_PATH=./prediction/musicnet_attn
 
 
 cd ..
-python3 Evaluation.py --help
 python3 Evaluation.py $MODE \
     -f $FEATURE_PATH \
     -m $MODEL_PATH \

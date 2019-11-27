@@ -177,9 +177,9 @@ def draw(data, out_name="roll.png"):
     plt.imshow(data.transpose(), origin="lower", aspect="auto")
     plt.savefig(out_name, dpi=250)
 
-def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02):
+def PostProcess(pred, mode="note", onset_th=5, dura_th=1, frm_th=1, t_unit=0.02):
     if mode == "note":
-        onset = pred[:,:,2]
+        onset = np.copy(pred[:,:,2])
         dura = pred[:,:,1]
         
         onset = np.where(onset<dura, 0, onset)
@@ -191,7 +191,7 @@ def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02)
         pred[:,:,2] = onset
     
         # duration channel
-        norm_dura = norm(dura)
+        norm_dura = norm(dura+pred[:,:,2])
         dura = np.where(norm_dura<dura_th, 0, norm_dura)
         pred[:,:,1] = dura
         
@@ -207,7 +207,8 @@ def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02)
         else:
             raise ValueError("Unknown channel length: {}".format(ch_num))
         
-        p = (mix-np.mean(mix))/np.std(mix)
+        p = norm(mix) 
+        #p = mix
         p = np.where(p>frm_th, 1, 0)
         p = roll_down_sample(p)
         
@@ -274,6 +275,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         # Third item would be offset channel (not yet implement)
         item = pred[:,:,[it*ch_per_inst+i+1 for it in range(iters)]]
         ch_container.append(norm(item))
+        #ch_container.append(item)
 
     onset_th = threshold_type_converter(onset_th, iters)
     dura_th = threshold_type_converter(dura_th, iters)
@@ -293,7 +295,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
             ent += entropy(ch)
             normed_ch.append(ch)
         print("std: {:.2f} ent: {:.2f} mult: {:.2f}".format(std/ch_per_inst, ent/ch_per_inst, std*ent/ch_per_inst**2))
-        if std/ch_per_inst < inst_th:
+        if iters>1 and (std/ch_per_inst < inst_th):
             continue
 
         pp = np.dstack([zeros] + normed_ch)
