@@ -179,7 +179,7 @@ def draw(data, out_name="roll.png"):
 
 def PostProcess(pred, mode="note", onset_th=5, dura_th=1, frm_th=1, t_unit=0.02):
     if mode == "note":
-        onset = np.copy(pred[:,:,2])
+        onset = pred[:,:,2]
         dura = pred[:,:,1]
         
         onset = np.where(onset<dura, 0, onset)
@@ -191,7 +191,7 @@ def PostProcess(pred, mode="note", onset_th=5, dura_th=1, frm_th=1, t_unit=0.02)
         pred[:,:,2] = onset
     
         # duration channel
-        norm_dura = norm(dura+pred[:,:,2])
+        norm_dura = norm(dura)+onset
         dura = np.where(norm_dura<dura_th, 0, norm_dura)
         pred[:,:,1] = dura
         

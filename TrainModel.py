@@ -84,9 +84,9 @@ def main(args):
     timesteps = args.timesteps
 
     # Label type
-    #mode = "frame_onset"
+    mode = "frame_onset"
     #l_type = BaseLabelType(mode, timesteps=timesteps)
-    mode = "multi_instrument_note"
+    #mode = "multi_instrument_note"
     l_type = MusicNetLabelType(mode, timesteps=timesteps)
 
     # Number of output classes
@@ -134,10 +134,10 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                    out_class=out_classes)
-        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #                       out_class=out_classes)
+        #model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #            out_class=out_classes)
+        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                               out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)
