@@ -13,6 +13,9 @@ import scipy
 from scipy import signal
 import argparse
 from keras.models import load_model
+from project.Feature.FeatureVar import FVar
+import concurrent.futures
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 def STFT(x, fr, fs, Hop, h):        
     t = np.arange(Hop, np.ceil(len(x)/float(Hop))*Hop, Hop)
@@ -140,6 +143,30 @@ def CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave):
 
     return tfrL0, tfrLF, tfrLQ, f, q, t, central_frequencies 
 
+def parallel_extract(x, samples, MaxSample, fr, fs, Hop, h, fc, tc, g, NumPerOctave):
+    freq_width = MaxSample * Hop
+    Round = np.ceil(samples/MaxSample).astype('int')
+    tmpL0, tmpLF, tmpLQ, tmpZ = {}, {}, {}, {}
+    with ProcessPoolExecutor(max_workers=4) as executor:
+        future_to_segment = {}
+        for i in range(Round):
+            tmpX = x[i*freq_width:(i+1)*freq_width]
+            future = executor.submit(CFP_filterbank, tmpX, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
+            future_to_segment[future] = i
+
+        for future in concurrent.futures.as_completed(future_to_segment):
+            seg_id = future_to_segment[future]
+            try:
+                tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = future.result()
+                tmpL0[seg_id] = tfrL0
+                tmpLF[seg_id] = tfrLF
+                tmpLQ[seg_id] = tfrLQ
+                tmpZ[seg_id] = tfrLF*tfrLQ
+            except Exception as exc:
+                print("Something generated an exception: {}".format(exc))
+    
+    return tmpL0, tmpLF, tmpLQ, tmpZ, f, q, t, CenFreq
+    
 def feature_extraction(
         filename,
         Hop=882,
@@ -155,44 +182,28 @@ def feature_extraction(
     x, fs = sf.read(filename)
     if len(x.shape)>1:
        x = np.mean(x, axis = 1)
-    #x = x[:3*fs]
     x = signal.resample_poly(x, Down_fs, fs)
     fs = Down_fs # sampling frequency
     x = x.astype('float32')
-    #Hop = 320 # hop size (in sample)
     h = scipy.signal.blackmanharris(w) # window size
-    #fr = 2.0 # frequency resolution
-    #fc = 27.5#80.0 # the frequency of the lowest pitch
-    #tc = 1/4487.0#1/1000.0 # the period of the highest pitch
-    #g = np.array([0.24, 0.6, 1])
     g = np.array(g)
-    #NumPerOctave = 48 # Number of bins per octave
-    #f  --> freq for each axis
 
-    MaxSample = 15000
+    MaxSample = 5000
     samples = np.floor(len(x)/Hop).astype('int')
     print("# Sample: ", samples)
     if samples > MaxSample:
-        freq_width = MaxSample * Hop
-        Round = np.ceil(samples/MaxSample).astype('int')
-        tmpL0, tmpLF, tmpLQ, tmpZ = [], [], [], []
-        for i in range(Round):
-            tmpX = x[i*freq_width:(i+1)*freq_width]
-            tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(tmpX, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
-            tmpL0.append(tfrL0)
-            tmpLF.append(tfrLF)
-            tmpLQ.append(tfrLQ)
-            tmpZ.append(tfrLF*tfrLQ)
+        tmpL0, tmpLF, tmpLQ, tmpZ, f, q, t, CenFreq = parallel_extract(x, samples, MaxSample, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
 
         tfrL0 = tmpL0.pop(0)
         tfrLF = tmpLF.pop(0)
         tfrLQ = tmpLQ.pop(0)
         Z = tmpZ.pop(0)
-        for i in range(Round-1):
-            tfrL0 = np.concatenate((tfrL0, tmpL0.pop(0)), axis=1)
-            tfrLF = np.concatenate((tfrLF, tmpLF.pop(0)), axis=1)
-            tfrLQ = np.concatenate((tfrLQ, tmpLQ.pop(0)), axis=1)
-            Z = np.concatenate((Z, tmpZ.pop(0)), axis=1)
+        rr = len(tmpL0)
+        for i in range(1, rr, 1):
+            tfrL0 = np.concatenate((tfrL0, tmpL0.pop(i)), axis=1)
+            tfrLF = np.concatenate((tfrLF, tmpLF.pop(i)), axis=1)
+            tfrLQ = np.concatenate((tfrLQ, tmpLQ.pop(i)), axis=1)
+            Z = np.concatenate((Z, tmpZ.pop(i)), axis=1)
     else:
         tfrL0, tfrLF, tfrLQ, f, q, t, CenFreq = CFP_filterbank(x, fr, fs, Hop, h, fc, tc, g, NumPerOctave)
         Z = tfrLF * tfrLQ
