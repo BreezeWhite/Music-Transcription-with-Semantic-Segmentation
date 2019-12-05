@@ -177,7 +177,7 @@ def draw(data, out_name="roll.png"):
     plt.imshow(data.transpose(), origin="lower", aspect="auto")
     plt.savefig(out_name, dpi=250)
 
-def PostProcess(pred, mode="note", onset_th=5, dura_th=1, frm_th=1, t_unit=0.02):
+def PostProcess(pred, mode="note", onset_th=7.5, dura_th=2, frm_th=1, t_unit=0.02):
     if mode == "note":
         onset = pred[:,:,2]
         dura = pred[:,:,1]
@@ -260,7 +260,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
     if mode == 'note':
         ch_per_inst = 2
     elif mode == 'frame':
-        ch_per_inst = 1
+        ch_per_inst = 2
     elif mode == 'offset':
         raise NotImplementedError
     else:

@@ -1,8 +1,6 @@
-
-import sys
-sys.path.append("MusicNet/")
-
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+
 import argparse
 import numpy as np
 import h5py
@@ -51,11 +49,11 @@ def main(args):
     print("Predicting...")
     pred = predict(feature, model)
     
-    p_out = h5py.File("pred.hdf", "w")
-    p_out.create_dataset("0", data=pred)
-    p_out.close()
+    #p_out = h5py.File("pred.hdf", "w")
+    #p_out.create_dataset("0", data=pred)
+    #p_out.close()
 
-    midi = PostProcess(pred)
+    midi = PostProcess(pred, onset_th=8.5, dura_th=1)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)

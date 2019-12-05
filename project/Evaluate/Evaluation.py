@@ -129,7 +129,7 @@ class EvalEngine:
                 ref_interval, ref_hz, 
                 est_interval, est_hz, 
                 offset_ratio=None,
-                onset_tolerance=0.06
+                onset_tolerance=0.05
             )
         except ValueError as expt:
             print(expt)
@@ -147,7 +147,7 @@ class EvalEngine:
                          pred_path=None,
                          label_path=None,
                          inst_th=1.1,
-                         onset_th=7.5, 
+                         onset_th=9, 
                          dura_th=1, 
                          frm_th=1.5,
                          t_unit=0.02):
