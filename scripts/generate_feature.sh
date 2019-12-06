@@ -1,10 +1,10 @@
 #!/bin/bash
 
-DATASET=MusicNet
-D_PATH=/media/data/MusicNet
+DATASET=Maestro
+D_PATH=/media/data/maestro-v1.0.0
 PHASE=train
-PIECE_PER_FILE=20
-OUTPUT=/media/data/MusicNet/${PHASE}_feature
+PIECE_PER_FILE=40
+OUTPUT=/media/data/maestro-v1.0.0/${PHASE}_feature
 
 cd ..
 #python3 GenFeature.py --help
