@@ -53,7 +53,7 @@ def main(args):
     #p_out.create_dataset("0", data=pred)
     #p_out.close()
 
-    midi = PostProcess(pred, onset_th=8.5, dura_th=1)
+    midi = PostProcess(pred, onset_th=args.onset_th, dura_th=1)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)
@@ -73,6 +73,8 @@ if __name__ == "__main__":
                         type=str, default="Piano Roll")
     parser.add_argument("--to-midi", help="Also output the transcription result to midi file.",
                         type=str)
+    parser.add_argument("--onset-th", help="Onset threshold (5~8)",
+                        type=float, default=7)
     args = parser.parse_args()
     args.num_harmonics = 5
     

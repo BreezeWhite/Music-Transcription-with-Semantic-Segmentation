@@ -84,7 +84,7 @@ def main(args):
     timesteps = args.timesteps
 
     # Label type
-    mode = "frame_onset"
+    mode = "frame"
     #l_type = BaseLabelType(mode, timesteps=timesteps)
     #mode = "multi_instrument_note"
     l_type = MusicNetLabelType(mode, timesteps=timesteps)
@@ -134,10 +134,10 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        #model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #            out_class=out_classes)
-        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                               out_class=out_classes)
+        model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                    out_class=out_classes)
+        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #                       out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)
@@ -149,8 +149,8 @@ def main(args):
     weight = None # Frame mode
     if weight is not None:
         assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
-    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
-    loss_func = lambda label,pred: mctl_loss(label, pred, weight=weight)
+    loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    #loss_func = lambda label,pred: mctl_loss(label, pred, weight=weight)
     
     # Use multi-gpu to train the model
     if True:

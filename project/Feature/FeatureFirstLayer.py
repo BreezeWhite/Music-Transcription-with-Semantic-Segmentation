@@ -91,7 +91,7 @@ def Quef2LogFreqMapping(ceps, q, fs, fc, tc, NumPerOct):
             central_freq.append(CenFreq)
         else:
             break
-    f = 1/q
+    f = 1/(q+1e-9)
     Nest = len(central_freq)
     freq_band_transformation = np.zeros((Nest-1, len(f)), dtype=np.float)
     for i in range(1, Nest-1):
@@ -188,7 +188,7 @@ def feature_extraction(
     h = scipy.signal.blackmanharris(w) # window size
     g = np.array(g)
 
-    MaxSample = 5000
+    MaxSample = 4000
     samples = np.floor(len(x)/Hop).astype('int')
     print("# Sample: ", samples)
     if samples > MaxSample:
@@ -199,7 +199,7 @@ def feature_extraction(
         tfrLQ = tmpLQ.pop(0)
         Z = tmpZ.pop(0)
         rr = len(tmpL0)
-        for i in range(1, rr, 1):
+        for i in range(1, rr+1, 1):
             tfrL0 = np.concatenate((tfrL0, tmpL0.pop(i)), axis=1)
             tfrLF = np.concatenate((tfrLF, tmpLF.pop(i)), axis=1)
             tfrLQ = np.concatenate((tfrLQ, tmpLQ.pop(i)), axis=1)
