@@ -1,5 +1,11 @@
-
+import pickle
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np 
+
+import sys
+sys.path.append("./")
 
 from project.utils import label_conversion
 
@@ -71,6 +77,9 @@ class MusicNetLabelType(BaseLabelType):
         if mode == "multi_instrument_frame":
             self.conversion_func = self.multi_inst_frm
             self.out_classes = 12
+        elif mode == "multi_instrument_note":
+            self.conversion_func = self.multi_inst_note
+            self.out_classes = 23
         else:
             self.conversion_func = None
             self.out_classes = none
@@ -81,6 +90,17 @@ class MusicNetLabelType(BaseLabelType):
     def multi_inst_frm(self, label, tid):
         return self.l_conv(label, tid)
 
+    def multi_inst_note(self, label, tid):
+        onsets = self.l_conv(label, tid, onsets=True)
+        dura = self.l_conv(label, tid) - onsets
+        out = np.zeros(onsets.shape[:-1]+(23,))
+
+        for i in range(11):
+            out[:,:,i*2+2] = onsets[:,:,i+1]
+            out[:,:,i*2+1] = dura[:,:,i+1]
+        out[:,:,0] = 1 - np.sum(out[:,:,1:], axis=2)
+
+        return out
 
 if __name__ == "__main__":
     ltype = BaseLabelType("frame")
@@ -88,3 +108,16 @@ if __name__ == "__main__":
         ltype = BaseLabelType("out_of_mode")
     except ValueError as ex:
         print("Test successful: {}".format(ex))    
+
+    label = pickle.load(open("/data/MusicNet/train_feature/train_20_14.pickle", "rb"))
+    key = list(label.keys())
+    val = label[key[3]]
+    ltype = MusicNetLabelType("multi_instrument_note", timesteps=len(val))
+
+    roll = ltype.multi_inst_note(val, 0)
+    for i in range(11):
+        plt.imshow(roll[:,:,i*2+1].transpose(), origin="lower", aspect="auto")
+        plt.savefig("{}_onset.png".format(i), dpi=250)
+        plt.imshow(roll[:,:,i*2+2].transpose(), origin="lower", aspect="auto")
+        plt.savefig("{}_dura.png".format(i), dpi=250)
+

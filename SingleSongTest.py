@@ -1,8 +1,6 @@
-
-import sys
-sys.path.append("MusicNet/")
-
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+
 import argparse
 import numpy as np
 import h5py
@@ -19,8 +17,8 @@ from project.configuration import MusicNet_Instruments
 
 def main(args):
     # Pre-process features
-    assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again."
-    print("Processing features")
+    assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again. Given input: {}".format(audio.input_audio)
+    print("Processing features of input audio: {}".format(args.input_audio))
     Z, tfrL0, tfrLF, tfrLQ, t, cenf, f = feature_extraction(args.input_audio)
     
     # Post-process feature according to the configuration of model
@@ -51,14 +49,15 @@ def main(args):
     print("Predicting...")
     pred = predict(feature, model)
     
-    p_out = h5py.File("pred.hdf", "w")
-    p_out.create_dataset("0", data=pred)
-    p_out.close()
+    #p_out = h5py.File("pred.hdf", "w")
+    #p_out.create_dataset("0", data=pred)
+    #p_out.close()
 
-    midi = PostProcess(pred)
+    midi = PostProcess(pred, onset_th=args.onset_th, dura_th=1)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)
+        print("Midi written as {}".format(args.to_midi))
 
 if __name__ == "__main__":
     
@@ -74,6 +73,8 @@ if __name__ == "__main__":
                         type=str, default="Piano Roll")
     parser.add_argument("--to-midi", help="Also output the transcription result to midi file.",
                         type=str)
+    parser.add_argument("--onset-th", help="Onset threshold (5~8)",
+                        type=float, default=7)
     args = parser.parse_args()
     args.num_harmonics = 5
     

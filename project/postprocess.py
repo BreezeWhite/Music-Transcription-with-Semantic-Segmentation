@@ -1,5 +1,8 @@
+import sys
+sys.path.append("./")
 
 import h5py
+import math
 import pretty_midi
 import numpy as np
 import matplotlib
@@ -7,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from librosa import note_to_midi
+from project.configuration import MusicNet_Instruments, MusicNetMIDIMapping
 from project.Evaluate.eval_utils import roll_down_sample, find_occur
 
 def plot3(pred):
@@ -110,7 +114,8 @@ def infer_piece(piece):
         for ns in pns:
             ns["pitch"] = i
             notes.append(ns)
-            
+    print(" "*80, end="\r")        
+
     notes = sorted(notes, key=lambda d: d["start"])
     last_start = 0
     for i in range(len(notes)):
@@ -161,26 +166,33 @@ def to_midi(notes, t_unit=0.02):
 def down_sample(pred):
     dd = roll_down_sample(pred[:,:,0])
     for i in range(1, pred.shape[2]):
-        dd = np.dstack([dd, roll_down_sample(pred[:,:,i], occur_num=2)])
+        dd = np.dstack([dd, roll_down_sample(pred[:,:,i], occur_num=3)])
 
     return dd
 
-def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02):
+def norm(data):
+    return (data-np.mean(data))/np.std(data)
+
+def draw(data, out_name="roll.png"):
+    plt.imshow(data.transpose(), origin="lower", aspect="auto")
+    plt.savefig(out_name, dpi=250)
+
+def PostProcess(pred, mode="note", onset_th=7.5, dura_th=2, frm_th=1, t_unit=0.02):
     if mode == "note":
         onset = pred[:,:,2]
         dura = pred[:,:,1]
         
         onset = np.where(onset<dura, 0, onset)
-        
+
         # Normalize along each channel and filter by the nomalized value
         # onset channel
-        onset = (onset-np.mean(onset))/np.std(onset)
-        onset = np.where(onset<onset_th, 0, onset)
+        norm_onset = norm(onset)
+        onset = np.where(norm_onset<onset_th, 0, norm_onset)
         pred[:,:,2] = onset
-        
+    
         # duration channel
-        dura = (dura-np.mean(dura))/np.std(dura)
-        dura = np.where(dura<dura_th, 0, dura)
+        norm_dura = norm(dura)+onset
+        dura = np.where(norm_dura<dura_th, 0, norm_dura)
         pred[:,:,1] = dura
         
         notes = infer_piece(down_sample(pred))
@@ -195,28 +207,20 @@ def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02)
         else:
             raise ValueError("Unknown channel length: {}".format(ch_num))
         
-        p = (mix-np.mean(mix))/np.std(mix)
+        p = norm(mix) 
+        #p = mix
         p = np.where(p>frm_th, 1, 0)
         p = roll_down_sample(p)
         
         notes = []
         for idx in range(p.shape[1]):
-            _, onset_interval = find_occur(p[:,idx], t_unit=t_unit)
-            _, offset_interval = find_occur(p[:,idx], mode="offset", t_unit=t_unit)
-            if len(onset_interval) != len(offset_interval):
-                print("WRNING: length of onset and offset not consistent. Onset len: {}, offset len: {}.".format(len(onset_interval), len(offset_interval)))
-                min_len = min(len(onset_interval), len(offset_interval))
-                onset_interval = onset_interval[:min_len]
-                offset_interval = offset_interval[:min_len]
-
-            for i in range(len(onset_interval)):
+            p_note = find_occur(p[:,idx], t_unit=t_unit)
+            for nn in p_note:
                 note = {}
-                onset = onset_interval[i][0]
-                offset = offset_interval[i][0]
                 note["pitch"] = idx
-                note["start"] = int(round(onset/t_unit))
-                note["end"] = int(round(offset/t_unit))
-                note["stren"] = mix[note["start"], idx*4]
+                note["start"] = nn["onset"]
+                note["end"] = nn["offset"]
+                note["stren"] = mix[int(nn["onset"]*t_unit), idx*4]
                 notes.append(note)
         midi = to_midi(notes, t_unit=t_unit)
     else:
@@ -224,19 +228,109 @@ def PostProcess(pred, mode="note", onset_th=5, dura_th=2, frm_th=1, t_unit=0.02)
 
     return midi
         
+def threshold_type_converter(th, length):
+    if isinstance(th, list):
+        assert(len(th)==length)
+    else:
+        th = [th for _ in range(length)]
+    return th
+
+def entropy(data, bins=200):
+    min_v = -20#np.min(data)
+    max_v = 30#np.max(data)
+    interval = (max_v-min_v)/bins
+    cut_offs = [min_v+i*interval for i in range(bins+1)]
+    discrete_v = np.digitize(data, cut_offs)
+    _, counts = np.unique(discrete_v, return_counts=True)
+    probs = counts/np.sum(counts)
+    ent = 0
+    for p in probs:
+        ent -= p * math.log(p, math.e)
+
+    return ent
+
+def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th=0.95, t_unit=0.02):
+    """ Function for post-process multi-instrument prediction
+    Parameters:
+        mode: 'note' or 'frame'
+        onset_th: Threshold of onset channel. Type of list or float
+        dura_th: Threshold of duration channel. Type of list or float
+        inst_th: Threshold of deciding a instrument is present or not according to Std. of prediction.
+    """
+    if mode == 'note':
+        ch_per_inst = 2
+    elif mode == 'frame':
+        ch_per_inst = 2
+    elif mode == 'offset':
+        raise NotImplementedError
+    else:
+        raise ValueError
+    assert((pred.shape[-1]-1)%ch_per_inst == 0)
+    
+    ch_container = []
+    iters = (pred.shape[-1]-1)//ch_per_inst
+    for i in range(ch_per_inst):
+        # First item would be duration channel
+        # Second item would be onset channel
+        # Third item would be offset channel (not yet implement)
+        item = pred[:,:,[it*ch_per_inst+i+1 for it in range(iters)]]
+        ch_container.append(norm(item))
+        #ch_container.append(item)
+
+    onset_th = threshold_type_converter(onset_th, iters)
+    dura_th = threshold_type_converter(dura_th, iters)
+    frm_th = threshold_type_converter(frm_th, iters)
+
+    zeros = np.zeros((pred.shape[:-1]))
+    midis = []
+    note_num = []
+    out_midi = pretty_midi.PrettyMIDI()
+    for i in range(iters):
+        normed_ch = []
+        std = 0
+        ent = 0
+        for ii in range(ch_per_inst):
+            ch = ch_container[ii][:,:,i]
+            std += np.std(ch)
+            ent += entropy(ch)
+            normed_ch.append(ch)
+        print("std: {:.2f} ent: {:.2f} mult: {:.2f}".format(std/ch_per_inst, ent/ch_per_inst, std*ent/ch_per_inst**2))
+        if iters>1 and (std/ch_per_inst < inst_th):
+            continue
+
+        pp = np.dstack([zeros] + normed_ch)
+        midi = PostProcess(pp, mode=mode, onset_th=onset_th[i], dura_th=dura_th[i], frm_th=frm_th[i], t_unit=t_unit)
+
+        inst_name = MusicNet_Instruments[i]
+        program = MusicNetMIDIMapping[inst_name]
+        inst = pretty_midi.Instrument(program=program-1, name=inst_name)
+        inst.notes = midi.instruments[0].notes
+        out_midi.instruments.append(inst)
+
+    return out_midi
+
         
 if __name__ == "__main__":
-    f_name = "Maestro-Attn-W4.2_predictions.hdf"
+    f_name = "./prediction/musicnet_multi_note_prediction/MusicNet-Attn-Note-W4.2_predictions.hdf"
     p_in = h5py.File(f_name, "r")
-    pred = p_in["0"][:]
+    keys = list(p_in.keys())
+    print(keys)
+    pred = p_in["2298"][:]
     p_in.close()
+
+    for i in range(11):
+        plt.imshow(pred[:2000,:,i*2+1].transpose(), origin="lower", aspect="auto")
+        #plt.savefig("{}_frm.png".format(i), dpi=250)
+        plt.imshow(pred[:2000,:,i*2+2].transpose(), origin="lower", aspect="auto")
+        #plt.savefig("{}_onset.png".format(i), dpi=250)
     
-    pp = pred#[16744:22000]
-    midi = PostProcess(pp, mode="frame")
+    # midi = PostProcess(pred, mode="frame")
+    onset_th = [2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    midi = MultiPostProcess(pred, onset_th=5)#onset_th)
     midi.write("test.mid")
     
-    draw_roll(midi)   
-    plot3(pp)
+    #draw_roll(midi)   
+    #plot3(pp)
         
         
         

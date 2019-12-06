@@ -37,12 +37,44 @@ def focal_loss(prediction_tensor, target_tensor, weight=None, alpha=0.25, gamma=
         weight = tf.constant(weight, dtype=per_entry_cross_ent.dtype)
         per_entry_cross_ent *= weight
 
-    return tf.reduce_mean(per_entry_cross_ent * weight)
+    return tf.reduce_mean(per_entry_cross_ent)
 
 def sparse_loss(yTrue, yPred, weight=None):
     loss = focal_loss(yPred, yTrue, weight=weight)
     return loss
 
+def distance_loss(y_true, y_pred, exp=1):
+    sigmoid_p = tf.nn.sigmoid(y_pred)
+    if exp == -1:
+        # Infinite exponent
+        diff = tf.abs(y_true-sigmoid_p)
+        max_v = tf.reduce_max(diff, axis=1)
+        max_v = tf.reduce_max(max_v, axis=1)
+        return tf.reduce_mean(max_v)
+    return tf.reduce_mean(tf.pow(tf.abs(tf.pow(y_true, exp)-tf.pow(sigmoid_p, exp)), 1/exp))
+
+def q_func(y_true, gamma=0.1, total_chs=22):
+    return (1-gamma)*y_true + gamma/total_chs
+    #return (1-gamma)*y_true + (1-y_true)*gamma/total_chs
+
+def smooth_loss(y_true, y_pred, gamma=0.1, total_chs=22, weight=None):
+    clip_value = lambda v_in: tf.clip_by_value(v_in, 1e-8, 1.0)
+    target = clip_value(q_func(y_true, gamma=gamma, total_chs=total_chs))
+    neg_target = clip_value(q_func(1-y_true, gamma=gamma, total_chs=total_chs))
+    sigmoid_p = clip_value(tf.nn.sigmoid(y_pred))
+    neg_sigmoid_p = clip_value(tf.nn.sigmoid(1-y_pred))
+
+    cross_entropy = -target*tf.log(sigmoid_p) - neg_target*tf.log(neg_sigmoid_p)
+    return tf.reduce_mean(cross_entropy)
+
+def mctl_loss(y_true, y_pred, weight=None):
+    "Abbreviate from 'Mixed Cross enTropy and L1' loss"
+    cross_loss = smooth_loss(y_true, y_pred, weight=weight)
+    l1_loss = distance_loss(y_true, y_pred, exp=1)
+    #l_inf_loss = distance_loss(y_true, y_pred, exp=-1)
+
+    total_loss = cross_loss# + 0.1*l1_loss
+    return total_loss
 
 def conv_block(input_tensor,
                channel, kernel_size,

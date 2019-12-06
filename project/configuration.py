@@ -12,7 +12,7 @@ MusicNetMIDIMapping = {
     "Contrabass": 44,
     "Horn": 61,
     "Oboe": 69,
-    "Basoon": 71,
+    "Bassoon": 71,
     "Clarinet": 72,
     "Flute": 74
 }

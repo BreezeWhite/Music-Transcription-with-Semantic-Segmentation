@@ -7,8 +7,8 @@ from tensor2tensor.layers.common_attention import local_attention_2d, split_head
 from keras.models import model_from_yaml
 
 
-model_name = "./model/Maestro-Attn-W4.2"
-save_name = "./Maestro-Attn-W4.2-SingleGPU"
+model_name = "./model/Maestro-Maps-V4.2.1"
+save_name = "./model/{}-SingleGPU".format(model_name.split("/")[-1])
 
 model = load_model(model_name)
 m_info = model_info(model_name)

@@ -11,6 +11,9 @@ from project.utils import label_conversion
 from project.configuration import MusicNetMIDIMapping
 from project.central_frequency_352 import CentralFrequency
 
+def norm(data):
+    return (data-np.mean(data))/np.std(data)
+
 def cut_frame(frm, ori_feature_size=352, feature_num=384):
     feat_num = frm.shape[1]
     assert(feat_num==feature_num)
@@ -76,37 +79,30 @@ def roll_down_sample(data, occur_num=2, base=88):
         
     return return_v
 
-def find_occur(pitch, mode="onset", t_unit=0.02, min_duration=0.03):
+def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     min_duration = max(t_unit, min_duration)
-    
-    if mode == "onset":
-        candidate = np.where(pitch>0.5)[0]
-        shifted   = np.insert(candidate, 0, 0)[:-1]
-        cond_func = lambda diff: diff>(min_duration/t_unit)
-    elif mode == "offset":
-        shifted = np.where(pitch>0.5)[0]
-        shifted = np.append(shifted, len(pitch)+10)
-        candidate = np.insert(shifted, 0, shifted[0])[:-1]
-        cond_func = lambda diff: -diff>(min_duration/t_unit)
-    else:
-        raise ValueError("Supported mode are ['onset', 'offset']. Given mode: {}".format(mode))
-    
-    diff   = candidate - shifted
-    on_idx = np.where(cond_func(diff))[0]
-    on_idx = candidate[on_idx]
-    
-    new_pitch = np.zeros_like(pitch)
-    new_pitch[on_idx] = pitch[on_idx]
-    onsets   = on_idx * t_unit
-    interval = np.concatenate((onsets, onsets+2*t_unit)).reshape(2, len(onsets)).transpose()
-    
-    return new_pitch, interval
+    min_frm = min_duration/t_unit
 
-def gen_onsets_info_from_midi(midi, inst_num=1, t_unit=0.02):
+    cand = np.where(pitch>0.5)[0]
+    if len(cand) == 0:
+        return []
+
+    start = cand[0]
+    last = cand[0]
+    note = []
+    for cidx in cand:
+        if cidx-last>1:
+            if last-start>min_frm:
+                note.append({"onset": start, "offset": last})
+            start = cidx
+        last = cidx
+    
+    return note
+
+def gen_onsets_info_from_notes(midi_notes, t_unit=0.02):
     intervals = []
     pitches = []
-    inst = midi.instruments[inst_num-1]
-    for note in inst.notes:
+    for note in midi_notes:
         onset = note.start
         intervals.append([onset, onset+t_unit*2])
         pitches.append(librosa.midi_to_hz(note.pitch))
@@ -131,7 +127,7 @@ def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
     return np.array(intervals), np.array(pitches)
 
 def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, mpe=True, ori_feature_size=88, feature_num=88)
+    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
     return gen_onsets_info(roll[:,:,ch], t_unit=t_unit)
@@ -143,7 +139,10 @@ def gen_onsets_info(data, t_unit=0.02):
     lowest_pitch = librosa.note_to_midi("A0")
 
     for i in range(data.shape[1]):
-        _, it = find_occur(data[:, i], mode="onset", t_unit=t_unit)
+        notes = find_occur(data[:, i], t_unit=t_unit)
+        it = []
+        for nn in notes:
+            it.append([nn["onset"]*t_unit, (nn["onset"]+2)*t_unit])
         
         if len(intervals)==0 and len(it) > 0:
             intervals = np.array(it)
@@ -161,9 +160,10 @@ def gen_onsets_info(data, t_unit=0.02):
     
     return intervals, pitches
 
-def gen_frame_info_from_midi(midi, inst_num=1, t_unit=0.02):
-    inst = midi.instruments[inst_num-1]
+def gen_frame_info_from_notes(midi_notes, t_unit=0.02):
     tmp_midi = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(program=0)
+    inst.notes += midi_notes
     tmp_midi.instruments.append(inst)
     piano_roll = tmp_midi.get_piano_roll(fs=round(1/t_unit)).transpose()
     low = librosa.note_to_midi("A0")

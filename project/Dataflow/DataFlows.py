@@ -19,8 +19,7 @@ class MaestroDataflow(BaseDataflow):
         Create hdf/pickle instance to the data
 
         Args:
-            phase: "train", "val", or "test"
-            use_ram: load data into ram
+            phase: "train", "val", or se_ram: load data into ram
         Returns:
             feature: h5py references to the feature
             label:   specilaized data structure of lables
@@ -41,11 +40,20 @@ class MaestroDataflow(BaseDataflow):
         else:
             raise TypeError
 
-        hdfs = self.parse_files(path, ".hdf")[:1]
-        # feature = self.parse_hdf(hdfs, use_ram=use_ram)
-        # lbs = [a.replace(".hdf", ".pickle") for a in hdfs]
-        # label = self.parse_pickle(lbs)
+        hdfs = self.parse_files(path, ".hdf")#[:1]
         return self.parse_feature_labels(hdfs)
+
+    def post_init(self, **kwargs):
+        # Split train/val data from training set
+        split_p = round(len(self.features) * self.train_val_split)
+        if self.phase == "train":
+            self.features = self.features[:split_p]
+            self.labels = self.labels[:split_p]
+        elif self.phase == "val":
+            self.features = self.features[split_p:]
+            self.labels = self.labels[split_p:]
+
+        self.init_index()
 
 
 class MusicNetDataflow(MaestroDataflow):
@@ -58,19 +66,7 @@ class MusicNetDataflow(MaestroDataflow):
         "test_label":  "test_feature"
     }
 
-    def post_init(self, **kwargs):
-        # Split train/val data from training set
-
-        split_p = round(len(self.features) * self.train_val_split)
-        if self.phase == "train":
-            self.features = self.features[:split_p]
-            self.labels = self.labels[:split_p]
-        elif self.phase == "val":
-            self.features = self.features[split_p:]
-            self.labels = self.labels[split_p:]
-
-        self.init_index()
-        
+    
 
 class MapsDataflow(MusicNetDataflow):
     structure = {
