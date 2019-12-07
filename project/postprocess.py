@@ -56,9 +56,9 @@ def infer_pitch(pitch):
     """
     
     # Threshold parameters for note finding
-    ws = 16 # window size, ws*0.02sec
-    bound = 2 # peak value detection for onset and offset, the more center, the more strict (value between 0~ws-1)
-    occur_th = ws-2 # register
+    ws = 12 # window size, ws*0.02sec
+    bound = ws//2 # peak value detection for onset and offset, the more center, the more strict (value between 0~ws-1)
+    occur_th = ws//2 # register
     shortest = 5 # shortest note duration
     offset_vs_dura = 2 # register a new note according to either offset(bigger val) or duration(smaller val) event
 
