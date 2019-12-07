@@ -8,8 +8,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 from project.Evaluate.Evaluation import EvalEngine
 
 feature_path = "/data/Maps/test_feature"
-model_path = "../model/Maestro-Attn-Note-Smooth"
-pred_save_path = "../prediction/maestro_attn_note_smooth"
+model_path = "../model/ICASSP-2019-Maestro-Frame"
+pred_save_path = "../prediction/icassp_2019_maestro_frame"
 
 generator = EvalEngine.predict_dataset(feature_path, model_path, pred_save_path)
 

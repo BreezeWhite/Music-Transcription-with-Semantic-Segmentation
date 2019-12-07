@@ -65,7 +65,6 @@ def label_conversion(label, tid,
                     new_l[t, pr, ii] = insts[it][1]
                 else:
                     new_l[t, pr, ii] = 1
-    new_l[:,:,0] = 1 - np.sum(new_l[:,:,1:], axis=2)
 
     h = new_l.shape[1]
     p_b = (feature_num-h) // 2
@@ -84,7 +83,8 @@ def label_conversion(label, tid,
     if mpe:
         mpe_l = np.nanmax(new_l[:,:,1:], axis=2)
         new_l = np.dstack((new_l[:,:,0], mpe_l))
-        
+
+    new_l[:,:,0] = 1 - np.sum(new_l[:,:,1:], axis=2)
     return new_l
                          
 def load_model(model_path):
