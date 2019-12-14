@@ -13,7 +13,6 @@ import scipy
 from scipy import signal
 import argparse
 from keras.models import load_model
-from project.Feature.FeatureVar import FVar
 import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
@@ -147,7 +146,9 @@ def parallel_extract(x, samples, MaxSample, fr, fs, Hop, h, fc, tc, g, NumPerOct
     freq_width = MaxSample * Hop
     Round = np.ceil(samples/MaxSample).astype('int')
     tmpL0, tmpLF, tmpLQ, tmpZ = {}, {}, {}, {}
-    with ProcessPoolExecutor(max_workers=4) as executor:
+    
+    max_workers = min(os.cpu_count(), Round)
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_segment = {}
         for i in range(Round):
             tmpX = x[i*freq_width:(i+1)*freq_width]
@@ -188,7 +189,7 @@ def feature_extraction(
     h = scipy.signal.blackmanharris(w) # window size
     g = np.array(g)
 
-    MaxSample = 4000
+    MaxSample = 2000
     samples = np.floor(len(x)/Hop).astype('int')
     print("# Sample: ", samples)
     if samples > MaxSample:
