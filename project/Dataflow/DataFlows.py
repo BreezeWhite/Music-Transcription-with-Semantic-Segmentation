@@ -10,8 +10,8 @@ class MaestroDataflow(BaseDataflow):
         "train_label": "train_feature",
         "val":         "train_feature",
         "val_label":   "train_feature",
-        "test":        "test_feature",
-        "test_label":  "test_feature"
+        "test":        "feature_test",
+        "test_label":  "feature_test"
     }
 
     def load_data(self, phase, use_ram=False):
