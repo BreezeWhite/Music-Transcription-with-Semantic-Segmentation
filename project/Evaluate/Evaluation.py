@@ -10,8 +10,8 @@ import numpy as np
 
 from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
 from project.utils import load_model, model_info
-from project.Evaluate.predict import predict
 from project.Evaluate.eval_utils import * 
+from project.Predict import predict
 from project.postprocess import MultiPostProcess, down_sample
 
 from tmp_debug import plot_onsets_info, draw
@@ -54,6 +54,7 @@ class EvalEngine:
                 inst_num = MusicNetMIDIMapping[inst]
                 
                 ####### Comment me
+                #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
                 #midi.write("{}_{}.mid".format(key, inst)) if mode=="note" else midi.write("{}_{}_frame.mid".format(key, inst))
                 #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
                 #######
@@ -147,9 +148,9 @@ class EvalEngine:
                          pred_path=None,
                          label_path=None,
                          inst_th=1.1,
-                         onset_th=9, 
+                         onset_th=6, 
                          dura_th=1, 
-                         frm_th=1.5,
+                         frm_th=0.1,
                          t_unit=0.02):
         """
         Parameters:
@@ -182,9 +183,9 @@ class EvalEngine:
             print("Loading predictions")
             for key, pred in pred_f.items():
                 #### Comment me
-                #if key != "1819":
+                #if key != "MAPS_MUS-chpn_op35_1_ENSTDkAm":
                 #    continue
-                #if len(cont) >= 20:
+                #if len(cont) >= 1:
                 #    break
                 ####
                 pred = pred[:]
@@ -203,6 +204,7 @@ class EvalEngine:
         avg_fs = sum(lfs)/length
         f_score = 2*avg_prec*avg_rec/(avg_prec+avg_rec)
         print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f} Avg F-score: {:.4f}".format(avg_prec, avg_rec, f_score, avg_fs))
+        print("onset th: {}".format(onset_th))
         return avg_prec, avg_rec, avg_fs
 
     @classmethod
@@ -259,16 +261,15 @@ class EvalEngine:
             hdf_paths = [hdf_paths]
         
         model = load_model(model_path)
-        feature_type, channels, out_classes, timesteps = model_info(model_path)
+        feature_type, channels, out_class, timesteps = model_info(model_path)
         
         for hdf_path in hdf_paths:
             with h5py.File(hdf_path, "r") as feat:
                 label_path = hdf_path.replace(".hdf", ".pickle")
                 label = pickle.load(open(label_path, "rb"))
                 for key, ff in feat.items():
-                    ff = create_batches(ff[:,:,channels], b_size=pred_batch_size, timesteps=timesteps) 
                     ll = label[key]
-                    pred = predict(ff, model)
+                    pred = predict(ff[:,:,channels], model, timesteps, out_class, batch_size=pred_batch_size)
                     
                     yield pred, ll, key
 

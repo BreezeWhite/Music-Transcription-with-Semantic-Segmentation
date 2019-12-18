@@ -7,9 +7,8 @@ import h5py
 
 from project.Feature.FeatureFirstLayer import feature_extraction
 from project.Feature.FeatureSecondLayer import fetch_harmonic
+from project.Predict import predict
 from project.postprocess import PostProcess
-from project.Evaluate.predict import predict
-from project.Evaluate.eval_utils import create_batches
 
 from project.utils import load_model, model_info
 from project.configuration import MusicNet_Instruments
@@ -42,18 +41,15 @@ def main(args):
         feature = np.array([Z, tfrL0, tfrLF, tfrLQ])
         feature = np.transpose(feature, axes=(2, 1, 0))
     
-    feature = create_batches(feature[:,:,channels], b_size=4, timesteps=timesteps)
     model = load_model(args.model_path)
-    
-
     print("Predicting...")
-    pred = predict(feature, model)
+    pred = predict(feature[:,:,channels], model, timesteps, out_class, batch_size=4, overlap_ratio=2/4)
     
     #p_out = h5py.File("pred.hdf", "w")
     #p_out.create_dataset("0", data=pred)
     #p_out.close()
 
-    midi = PostProcess(pred, onset_th=args.onset_th, dura_th=1)
+    midi = PostProcess(pred, onset_th=args.onset_th, dura_th=0)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)

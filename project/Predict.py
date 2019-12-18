@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import expit
 
-def predict(feature, model, timesteps, feature_num=384, batch_size=4, overlap_ratio=0.5):
+def predict(feature, model, timesteps, out_class, feature_num=384, batch_size=4, overlap_ratio=0.5):
     step_size = round((1-overlap_ratio)*timesteps)
     if step_size == 0:
         raise ValueError("Given overlap_ratio too high. Please decrease the value (available: [0, 1))")
@@ -31,7 +31,7 @@ def predict(feature, model, timesteps, feature_num=384, batch_size=4, overlap_ra
     batch_num = np.ceil(steps/batch_size).astype('int')
     batch = np.zeros((batch_size, timesteps,) + feature.shape[1:])
     hop_size = batch_size*step_size
-    pred_buffer = np.zeros_like(feature)
+    pred_buffer = np.zeros(feature.shape[:-1]+(out_class,))
     
     # Start prediction
     for i in range(batch_num):
@@ -50,5 +50,5 @@ def predict(feature, model, timesteps, feature_num=384, batch_size=4, overlap_ra
             frm_range = range(start_frm+b*step_size, start_frm+b*step_size+timesteps)
             pred_buffer[frm_range] += pred[b]
         
-    return expit(pred_buffer[pad_begin_len:pad_begin_len+length, pb:feature_num-pt] * overlap_ratio)
+    return expit(pred_buffer[pad_begin_len:pad_begin_len+length, pb:feature_num-pt] * (1-overlap_ratio))
 
