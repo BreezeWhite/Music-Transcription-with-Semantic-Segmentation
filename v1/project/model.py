@@ -6,7 +6,6 @@ from keras.layers.convolutional import Conv1D, MaxPooling1D, UpSampling2D, UpSam
 
 from keras.optimizers import SGD, Adam
 from keras import regularizers
-from project.utils import load_model, model_copy
 
 import tensorflow as tf
 from tensorflow.python.ops import array_ops
@@ -103,7 +102,6 @@ def adapter(input_tensor,
     input_tensor = Conv2DTranspose(channel, kernel_size, strides=strides, padding="same")(input_tensor)
 
     return input_tensor
-
 
 def seg(feature_num=128,
         timesteps=256,

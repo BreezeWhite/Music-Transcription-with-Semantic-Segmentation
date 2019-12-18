@@ -69,6 +69,7 @@ def predict(feature,
 
             tmp_pred = inference(feature = sub_feature[:, :, channels],
                                  model = model,
+                                 batch_size=5,
                                  timestep=timesteps,
                                  threshold = threshold,
                                  isMPE = True,
@@ -112,17 +113,16 @@ def parse_path(path, label=False):
     return data
  
 def load_files(paths, use_ram=True):
-    data = []
+    data = {}
     for path in paths:
         # Get extension
         ext = path[path.rfind(".")+1:]
         if ext=="hdf":
             ff = h5py.File(path, "r")
-            for key in ff:
-                data.append(ff[key])
-            
-            if use_ram:
-                data = [dd[:] for dd in data]
+            for key in ff.keys():
+                data[key] = ff[key]
+                if use_ram:
+                    data[key] = data[key][:]
             
         # If the extension is pickle, then it also load data into the ram.
         elif ext=="pickle":
@@ -173,10 +173,10 @@ def FullTest(model_path, test_path,
     
     # Validate on model/feature configurations
     f_type, channels, out_classes, timesteps = model_info(model_path)
-    
-    if f_type=="HCFP" and features[0].shape[2] < 12:
+    key = list(features.keys())
+    if f_type=="HCFP" and features[key[0]].shape[2] < 12:
         assert(False), "The model uses HCFP as input feature, but loaded features are not."
-    if f_type=="CFP" and features[0].shape[2] == 12:
+    if f_type=="CFP" and features[key[0]].shape[2] == 12:
         assert(len(channels)==2 and 1 in channels and 3 in channels), """The 
              The given feature are HCFP, but the model uses more feature types.
              Model input feature types: """ + str(channels) + " ({0: Z, 1: Spec, 2: GCoS, 3: Ceps})"
@@ -198,15 +198,16 @@ def FullTest(model_path, test_path,
     pred_out = h5py.File(os.path.join(pred_save_path, "pred.hdf"), "w")
     label_out = h5py.File(os.path.join(pred_save_path, "label.hdf"), "w")
     len_data = len(features)
-    for i in trange(len_data, desc='Dataset'):
-        feature = features[0][:]
+    for idx in trange(len_data, desc='Dataset'):
+        i = key[idx]
+        feature = features[i][:]
         
         pred = predict(feature, model, MAX_FRAME=MAX_FRAME, channels=list(channels), 
                        instruments=out_classes-1, timesteps=timesteps)
         
         # Save to output
         pred_out.create_dataset(str(i), data=pred, compression="gzip", compression_opts=5)
-        del feature, features[0]
+        del feature, features[i]
         
         # Process corresponding label
         if label_path is not None:
