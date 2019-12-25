@@ -9,7 +9,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'keras>=2.2.4',
-        'tensorflow-gpu==1.13.1',
+        'tensorflow-gpu==1.15.0',
         'tensorflow-probability==0.6',
         'tensor2tensor',
         'librosa',
