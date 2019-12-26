@@ -1,6 +1,6 @@
 #!/bin/bash
 
-out_model=Maestro-Smooth-Ultimate
+out_model=My-Model
 epoch=10
 early_stop=6
 
@@ -11,5 +11,5 @@ python3 TrainModel.py Maestro $out_model \
     --timesteps 512          \
     --early-stop $early_stop \
     --train-batch-size 8     \
-    --val-batch-size 8       
-    #-i ./model/Maestro-Smooth-Ultimate-Attn
+    --val-batch-size 8       \
+    -i ./model/ICASSP-2019-Maestro-note

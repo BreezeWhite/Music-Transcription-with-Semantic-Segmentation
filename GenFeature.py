@@ -47,7 +47,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Feature Processor")
     parser.add_argument("dataset", help="One of Maps, MusicNet, or Maestro", 
                         type=str, choices=["Maps", "MusicNet", "Maestro"])
-    parser.add_argument("dataset_path", help="Path to the downloaded dataset",
+    parser.add_argument("dataset-path", help="Path to the downloaded dataset",
                         type=str)
     parser.add_argument("-p", "--phase", help="Generate training feature or testing feature. Default: %(default)s",
                         type=str, default="train", choices=["train", "test"])

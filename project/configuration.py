@@ -59,7 +59,7 @@ class BaseDatasetInfo:
 
 
 class MapsDatasetInfo(BaseDatasetInfo):
-    base_path="/media/data/maps"
+    base_path="/data/maps"
     label_ext=".txt"
     train_wavs=[
         "MAPS_AkPnBcht_2/AkPnBcht/MUS",
@@ -78,7 +78,7 @@ class MapsDatasetInfo(BaseDatasetInfo):
 
 
 class MusicNetDatasetInfo(BaseDatasetInfo):
-    base_path="/media/data/MusicNet"
+    base_path="/data/MusicNet"
     label_ext=".csv"
     train_wavs=["train_data"]
     test_wavs=["test_data"]
@@ -87,7 +87,7 @@ class MusicNetDatasetInfo(BaseDatasetInfo):
 
 
 class MaestroDatasetInfo(BaseDatasetInfo):
-    base_path="/media/whitebreeze/data/maestro-v1.0.0"
+    base_path="/data/maestro-v1.0.0"
     label_ext=".midi"
     train_wavs=["2004", "2006", "2008", "2009", "2011", "2013", "2014", "2015"]
     test_wavs=["2017"]

@@ -71,8 +71,6 @@ def mctl_loss(y_true, y_pred, weight=None):
     "Abbreviate from 'Mixed Cross enTropy and L1' loss"
     cross_loss = smooth_loss(y_true, y_pred, weight=weight)
     l1_loss = distance_loss(y_true, y_pred, exp=1)
-    #l_inf_loss = distance_loss(y_true, y_pred, exp=-1)
-
     total_loss = cross_loss# + 0.1*l1_loss
     return total_loss
 

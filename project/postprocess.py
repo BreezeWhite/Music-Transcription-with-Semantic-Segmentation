@@ -33,16 +33,6 @@ def plot3(pred):
     on[on<th] = 0
     on = roll_down_sample(on)
     axes[1].imshow(on.transpose(), origin="lower", aspect="auto")
-    
-    """
-    on = pred[:,:,3]
-    on = (on-np.mean(on))/np.std(on)
-    #axes[2].imshow(on.transpose(), origin="lower", aspect="auto")
-    #on_th = np.where(on>10, 1, 0)
-    on[on<th] = 0
-    on = roll_down_sample(on)
-    axes[2].imshow(on.transpose(), origin="lower", aspect="auto")
-    """
     plt.show()
     
 def draw_roll(mm):
@@ -301,8 +291,8 @@ def threshold_type_converter(th, length):
     return th
 
 def entropy(data, bins=200):
-    min_v = -20#np.min(data)
-    max_v = 30#np.max(data)
+    min_v = -20
+    max_v = 30
     interval = (max_v-min_v)/bins
     cut_offs = [min_v+i*interval for i in range(bins+1)]
     discrete_v = np.digitize(data, cut_offs)
@@ -342,8 +332,9 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         ch_container.append(norm(item))
 
         ### Some hack for frame-level evaluation
-        #ch_container.append(item)
-        #ch_per_inst=2
+        del ch_container[-1]
+        ch_container.append(item)
+        ch_per_inst=2
         ### End hack
 
     onset_th = threshold_type_converter(onset_th, iters)
@@ -363,7 +354,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
             std += np.std(ch)
             ent += entropy(ch)
             normed_ch.append(ch)
-        print("std: {:.2f} ent: {:.2f} mult: {:.2f}".format(std/ch_per_inst, ent/ch_per_inst, std*ent/ch_per_inst**2))
+
         if iters>1 and (std/ch_per_inst < inst_th):
             continue
 
@@ -378,28 +369,4 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
 
     return out_midi
 
-        
-if __name__ == "__main__":
-    f_name = "./prediction/musicnet_multi_note_prediction/MusicNet-Attn-Note-W4.2_predictions.hdf"
-    p_in = h5py.File(f_name, "r")
-    keys = list(p_in.keys())
-    print(keys)
-    pred = p_in["2298"][:]
-    p_in.close()
-
-    for i in range(11):
-        plt.imshow(pred[:2000,:,i*2+1].transpose(), origin="lower", aspect="auto")
-        #plt.savefig("{}_frm.png".format(i), dpi=250)
-        plt.imshow(pred[:2000,:,i*2+2].transpose(), origin="lower", aspect="auto")
-        #plt.savefig("{}_onset.png".format(i), dpi=250)
-    
-    # midi = PostProcess(pred, mode="frame")
-    onset_th = [2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    midi = MultiPostProcess(pred, onset_th=5)#onset_th)
-    midi.write("test.mid")
-    
-    #draw_roll(midi)   
-    #plot3(pp)
-        
-        
         

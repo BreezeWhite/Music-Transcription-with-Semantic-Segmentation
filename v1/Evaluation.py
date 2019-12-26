@@ -271,7 +271,7 @@ if __name__ == "__main__":
     onsets = False
     
     
-    best = {"th": 0.20}
+    best = {"th": 0.10}
 
     # Validation
     if validate:

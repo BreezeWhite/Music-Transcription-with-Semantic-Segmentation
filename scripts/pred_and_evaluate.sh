@@ -1,9 +1,9 @@
 #!/bin/bash
 
 MODE=note
-FEATURE_PATH=/data/MusicNet/test_feature
-MODEL_PATH=./model/MusicNet-Attn-W4.2
-PRED_SAVE_PATH=./prediction/musicnet_attn
+FEATURE_PATH=/data/Maps/test_feature
+MODEL_PATH=./model/ICASSP-2019-Maps-Note
+PRED_SAVE_PATH=./prediction/maps_note
 
 
 cd ..
