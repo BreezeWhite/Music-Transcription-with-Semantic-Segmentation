@@ -18,7 +18,7 @@ A more technical way is to download this repository by executing `git clone http
 
 ## Table of Contents
 
-* [Quick Start](#Quick Start)
+* [Quick Start](#quick-start)
 
 * [Overview](#overview)
 
