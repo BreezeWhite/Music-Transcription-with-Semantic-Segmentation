@@ -84,9 +84,9 @@ def main(args):
     timesteps = args.timesteps
 
     # Label type
-    mode = "frame"
+    mode = "frame_onset"
     #l_type = BaseLabelType(mode, timesteps=timesteps)
-    #mode = "multi_instrument_note"
+    mode = "multi_instrument_note"
     l_type = MusicNetLabelType(mode, timesteps=timesteps)
 
     # Number of output classes
@@ -134,10 +134,10 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                    out_class=out_classes)
-        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #                       out_class=out_classes)
+        #model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #            out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
+        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                               out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)
@@ -149,8 +149,8 @@ def main(args):
     weight = None # Frame mode
     if weight is not None:
         assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
-    loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
-    #loss_func = lambda label,pred: mctl_loss(label, pred, weight=weight)
+    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    loss_func = lambda label,pred: mctl_loss(label, pred, weight=weight)
     
     # Use multi-gpu to train the model
     if True:
@@ -179,7 +179,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")
     
-    parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps",
+    parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps", choices=["Maestro", "MusicNet", "Maps"],
                         type=str)
     parser.add_argument("output_model_name", help="Name for trained model. If --input-model is given, \
                         then this flag has no effect.", type=str)
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
                         action="store_true")
     parser.add_argument("-t", "--timesteps", help="Time width for each input feature (default: %(default)d)",
-                        type=int, default=128)
+                        type=int, default=256)
     
     # Arguments about the training progress
     parser.add_argument("-e", "--epoch", help="Number of epochs to train (default: %(default)d)",
