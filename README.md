@@ -1,9 +1,7 @@
 
 # Music Transcription with Semantic Model
 
-## About
-
-This is a AMT (Automatic  Music Transcription) project, combined with state-of-the-art image semantic segmentation neural network model. 
+This is a Automatic  Music Transcription (AMT) project, aim to deal with **Multi-pitch Estimation** (MPE) problem, which has been a long-lasting and still a challenging problem. For the transcription, we leverage the state-of-the-art image semantic segmentation neural network and attention mechanism for transcribing piano solo, and also multi-instrument performances. 
 
 The dataset used is MAPS and MusicNet, which the first one is a solo-piano performance collection, and the second is a multi-instrument performance collection.  On both dataset, we achieved the state-of-the-art results on MPE (Multi-Pitch Estimation) case frame-wisely, which on **MAPS** we achieved **F-score 86.73%**, and on **MusicNet** we achieved **F-score 73.70%**.
 
@@ -11,23 +9,33 @@ This work was done based on our prior work of [repo1](https://github.com/BreezeW
 
 For whom would interested in more technical details, the original paper is [here](https://ieeexplore.ieee.org/abstract/document/8682605).
 
-#### Colab
-We have also provide a [colab](http://bit.ly/transcribe-colab) for quick starting. Just run through each block and upload your .mp3 piano recording, then enjoy.
+## Quick Start
+
+The most straight forward way to enjoy our project is to use our [colab](http://bit.ly/transcribe-colab). Just press the start button cell by cell, and you cant get the final output midi file of the given piano clip.
+
+A more technical way is to download this repository by executing `git clone https://github.com/BreezeWhite/Music-Transcription-with-Semantic-Segmentation.git`, and then enter *scripts* folder, modify `transcribe_audio.sh`, then run the script.
 
 
 ## Table of Contents
 
-* [About](#About)
+* [Quick Start](#Quick Start)
+
 * [Overview](#overview)
+
 * [Install Dependencies](#installation)
+
 * [Usage](#Usage)
   * [Pre-processing](#pre-processing)
+
   * [Training](#training)
+
   * [Prediction](#prediction)
+
   * [Evaluation](#evaluation)
+
   * [Single Song Transcription](#single-song-transcription)
-  * [Extra](#extra)
-    * [Print Piano Roll](#print-piano-roll)
+
+    
 
 ## Overview
 
@@ -44,37 +52,29 @@ We used semantic segmentation model for transcription, which is also widely used
 ![model](./figures/ModelArch.png)
 
 ## Installation
-To install the requirement, enter the following command:
+To install the requirements, enter the following command:
 
 ```
-    python3 setup.py install
+    pip install -r requirements.txt
 ```
 
 ## Usage
+
+For a quick example usage, you can enter *scripts* folder and check the code in the script to see how to use the python code.
 
 #### Pre-processing
 
 1. Download dataset from the official website of MAPS and MusicNet.
 
-2. run the command to pre-process the audios
+2. ```cd scripts```
 
-   for MusicNet, `cd MusicNet/`  and execute this command:
+3. Modify the content of *generate_feature.sh*
 
-```
-   python3 FeatureExtraction.py --MusicNet-path <path/to/downloaded/folder>
-```
-
-   for MAPS, `cd MAPS/` and execute this command:
-
-   ```
-   python3 Maps_FeatureExtraction.py --MAPS-path <path/to/downloaded/folder>
-   ```
-
-3. For more detail usage, run `python3 FeatureExtraction.py --help`
+4. Run the *generate_feature.sh* script
 
 #### Training
 
-There are some cases for training, by defining different input feature type and output cases. 
+There are some cases for training, by defining different input feature type and output cases. For quick start, please refer to *scripts/train_model.sh* 
 
 For input, you can either choose using **HCFP** or **CFP** representation, depending on your settings of pre-processed feature.  
 
@@ -86,8 +86,8 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   ```
   python3 TrainModel.py MusicNet \
-                        --dataset-path <path/to/extracted/feature> \ 
-                        -o <output/model/name>
+      --dataset-path <path/to/extracted/feature> \ 
+      -o <output/model/name>
   ```
 
 
@@ -101,7 +101,7 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   And to continue train on a pre-trained model, add `--input-model <path/to/pre-trained/model>`.
 
-  There are also some callbacks being applied to the training. You can find it around *line 145~150* in *TrainModel.py*.
+  There are also some callbacks being applied to the training. You can find it around *line 150~156* in *TrainModel.py*.
 
 #### Evaluation
 
@@ -110,41 +110,25 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 To predict and evaluate the scores with label, run the command:
 
 ```
-python3 Evaluation.py  MusicNet \
-                       --model_path <path/to/trained/model> \
-                       --save-pred <path/to/store/predictions> \
+python3 Evaluation.py frame \
+    --feature-path <path/to/generated/feature> \
+    --model-path <path/to/trained/model> \
+    --pred-save-path <path/to/store/predictions> \
 ```
 
-Currently, this script doesn't exactly have any evaluation functions. The only use is to make predictions and store them. You should implement the evaluation by yourself, or check out the original code inside **v1** folder.
+You can check out *scripts/evaluate_with_pred.sh* and *scripts/pred_and_evaluate.sh* for example use.
 
 #### Single Song Transcription
 
 To transcribe on a single song, run the command:
 
 ```
-python3 SingleSongTest.py --input-audio <input/audio> 
-                          --model-path <path/to/pre-trained/model>
+python3 SingleSongTest.py \
+    --input-audio <input/audio> 
+    --model-path <path/to/pre-trained/model>
 ```
 
-There will be an output file under the same path named *pred.hdf*, which contains the prediction of the given audio. 
+To get the predicted midi, add `--to-midi <path/to/save/midi>` flag. The midi will be stored at the given path.
 
-To get the predicted midi, add `--to-midi <path/to/store/midi>` flag. The midi will be stored at the given path.
-
-#### Extra
-
-###### Print Piano Roll
-
-To print out the predictions as images, like above shown, run the command:
-
-```
-python3 PrintPianoRoll.py -p <path/to/prediction>
-```
-
-The path to the folder should containing *pred.hdf* and *label.hdf*. For each figure, there will at most 4 rows, and two as a group, presenting prediction row and label row to the same piece. If there is no *label.hdf* file, the label row would be the same as prediction row.
-
-The default setting will print original output values, without thresholding.  If you want to print a thresholded figure, add `--quantize` flag. 
-
-To specify output path and figure name, add `-o <path/to/output> -f <figure_name>`.
-
-Notice that if turn on both `--quantize` and `--spec-instrument` to print out some specific instrument channels, you will also need to specify the flag:`--threshold <[list of thresholds]>`, with the same length of specified instruments.
+There is also an example script in *scripts* folder called *transcribe_audio.sh*
 
