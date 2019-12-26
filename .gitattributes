@@ -1,2 +1,7 @@
 *.h5 filter=lfs diff=lfs merge=lfs -text
 CheckPoint/* filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MAPS_CFP_MPE/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet_CFP_MPE/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet_HCFP_MPE/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet_HCFP_Multi/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/Maestro-Note/weights.h5 filter=lfs diff=lfs merge=lfs -text
