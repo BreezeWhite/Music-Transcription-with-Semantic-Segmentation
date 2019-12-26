@@ -29,8 +29,6 @@ A more technical way is to download this repository by executing `git clone http
 
   * [Training](#training)
 
-  * [Prediction](#prediction)
-
   * [Evaluation](#evaluation)
 
   * [Single Song Transcription](#single-song-transcription)
@@ -55,7 +53,11 @@ We used semantic segmentation model for transcription, which is also widely used
 To install the requirements, enter the following command:
 
 ```
-    pip install -r requirements.txt
+pip install -r requirements.txt
+```
+Download weights of the check points:
+```
+git lfs fetch
 ```
 
 ## Usage
@@ -100,8 +102,6 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
   To validate the execution of the training command, you can also specify less epochs and steps by adding `-e 1 -s 500`. 
 
   And to continue train on a pre-trained model, add `--input-model <path/to/pre-trained/model>`.
-
-  There are also some callbacks being applied to the training. You can find it around *line 150~156* in *TrainModel.py*.
 
 #### Evaluation
 
