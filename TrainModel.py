@@ -1,47 +1,56 @@
 
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+
 import argparse
 
+from project.LabelType import BaseLabelType
 from project.utils import load_model, save_model, model_info
-from project.configuration import Harmonic_Num
+from project.configuration import HarmonicNum
 from project.Models.model import seg, sparse_loss
-from project.Models import model_attn
 from project.Dataflow import DataFlows
 
 from keras import callbacks
+from keras.utils import multi_gpu_model
 import tensorflow as tf
 
-dataset_paths = {"Maestro":  "/media/whitebreeze/本機磁碟/maestro-v1.0.0",
-                 "MusicNet": "/media/whitebreeze/本機磁碟/MusicNet",
-                 "Maps":     "/media/whitebreeze/本機磁碟/maps"}
+dataset_paths = {
+    "Maestro":  "/data/Maestro",
+    "MusicNet": "/data/MusicNet",
+    "Maps":     "/data/Maps"
+}
 
-dataflow_cls = {"Maestro":  DataFlows.Maestro,
-                "MusicNet": DataFlows.MusicNet,
-                "Maps":     None}
+dataflow_cls = {
+    "Maestro":  DataFlows.MaestroDataflow,
+    "MusicNet": DataFlows.MusicNetDataflow,
+    "Maps":     DataFlows.MapsDataflow
+}
 
 default_model_path = "./model"
 
 
+def train(
+        model, 
+        generator_train, 
+        generator_val,
+        epoch=1,
+        callbacks=None, 
+        steps=6000, 
+        v_steps=3000
+    ):
 
-def train(model, 
-          generator_train, generator_val,
-          epoch     = 1,
-          callbacks = None, 
-          steps     = 6000, 
-          v_steps   = 3000):
-
-    model.fit_generator(generator_train, 
-                        validation_data  = generator_val,
-                        epochs           = epoch,
-                        steps_per_epoch  = steps,
-                        validation_steps = v_steps,
-                        callbacks        = callbacks,
-                        max_queue_size   = 100,
-                        use_multiprocessing = True,
-                        workers             = 1)
+    model.fit_generator(
+        generator_train, 
+        validation_data=generator_val,
+        epochs=epoch,
+        steps_per_epoch=steps,
+        validation_steps=v_steps,
+        callbacks=callbacks,
+        max_queue_size=100,
+        use_multiprocessing=False
+    )
 
     return model
-
 
 def main(args):
     if args.dataset not in dataflow_cls:
@@ -58,7 +67,6 @@ def main(args):
     if args.dataset_path is not None:
         assert(os.path.isdir(args.dataset_path))
         d_path = args.dataset_path
-    df_params["dataset_path"] = d_path
     
     # Number of channels that model need to know about
     ch_num = len(args.channels)
@@ -67,20 +75,20 @@ def main(args):
     # Type of feature to use
     feature_type = "CFP"
     
-    # Number of output classes
-    out_classes = 3
-
     # Output model name
     out_model_name = args.output_model_name
     
     # Feature length on time dimension
     timesteps = args.timesteps
 
+    # Label type
+    l_type = BaseLabelType("frame_onset", timesteps=timesteps)
+
+    # Number of output classes
+    out_classes = l_type.get_out_classes()
+
     # Continue to train on a pre-trained model
     if args.input_model is not None:
-        # output model name is the same as input model
-        out_model_name = args.input_model
-        
         # load configuration of previous training
         feature_type, channels, out_classes, timesteps = model_info(args.input_model)
         ch_num = len(channels)
@@ -88,36 +96,32 @@ def main(args):
         if args.dataset == "MusicNet":
             # Sepcial settings for MusicNet that has multiple instruments presented
             if args.use_harmonic:
-                ch_num = Harmonic_num * 2
+                ch_num = HarmonicNum * 2
                 channels = [i for i in range(ch_num)]
                 feature_type = "HCFP"
-            if args.multi_instruemnts:
-                out_classes = 12 # There are total 11 types of instruments in MusicNet
 
-        
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
     df_params["channels"]  = channels
-    df_params["mpe_only"]  = not args.multi_instruments
     df_params["timesteps"] = timesteps
+    df_params["out_classes"]  = out_classes
+    df_params["dataset_path"] = d_path
+    df_params["label_conversion_func"] = l_type.get_conversion_func()
 
     print("Loading training data")
     df_cls = dataflow_cls[args.dataset]
     train_df = df_cls(**df_params)
 
+    print("Loading validation data")
     df_params["b_sz"]  = args.val_batch_size
     df_params["phase"] = "val"
-
-    print("Loading validation data")
     val_df = df_cls(**df_params)
 
-    
     hparams["channels"]       = channels
     hparams["timesteps"]      = timesteps
     hparams["feature_type"]   = feature_type
     hparams["output_classes"] = out_classes
-
     
     print("Creating/loading model")
     # Create model
@@ -125,24 +129,21 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        #model = seg(multi_grid_layer_n=1, feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #            out_class=out_classes)
-        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                               out_class=out_classes)
-        
-        out_model_name = os.path.join(default_model_path, out_model_name)
-        # Save model and configurations
-        if not os.path.exists(out_model_name):
-            os.makedirs(out_model_name)
-        save_model(model, out_model_name, **hparams)
+        model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                    out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
 
+    # Save model and configurations
+    out_model_name = os.path.join(default_model_path, out_model_name)
+    if not os.path.exists(out_model_name):
+        os.makedirs(out_model_name)
+
+    save_model(model, out_model_name, **hparams)
     model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
 
-
     # create callbacks
-    earlystop   = callbacks.EarlyStopping(monitor="val_acc", patience=args.early_stop)
+    earlystop   = callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
     checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
-                                            monitor="val_acc", save_best_only=True, save_weights_only=True)
+                                            monitor="val_loss", save_best_only=False, save_weights_only=True)
     tensorboard = callbacks.TensorBoard(log_dir=os.path.join("tensorboard", args.output_model_name),
                                         write_images=True)
     callback_list = [checkpoint, earlystop, tensorboard]
@@ -155,11 +156,10 @@ def main(args):
           steps     = args.steps,
           v_steps   = args.val_steps)
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")
     
-    parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps",
+    parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps", choices=["Maestro", "MusicNet", "Maps"],
                         type=str)
     parser.add_argument("output_model_name", help="Name for trained model. If --input-model is given, \
                         then this flag has no effect.", type=str)
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
                         action="store_true")
     parser.add_argument("-t", "--timesteps", help="Time width for each input feature (default: %(default)d)",
-                        type=int, default=128)
+                        type=int, default=256)
     
     # Arguments about the training progress
     parser.add_argument("-e", "--epoch", help="Number of epochs to train (default: %(default)d)",

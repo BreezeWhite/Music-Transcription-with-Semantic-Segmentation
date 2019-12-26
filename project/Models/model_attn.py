@@ -99,10 +99,10 @@ def dot_attention(q, k, v):
     weights = K.softmax(logits)
     return K.batch_dot(weights, v)
 
-def MultiHead_Attention(x, out_channel=64, d_model=16, n_heads=8, query_shape=(32, 32), memory_flange=(8, 8)):
-    q = Conv2D(d_model, (3, 3), strides=(1, 1), padding="same")(x)
-    k = Conv2D(d_model, (3, 3), strides=(1, 1), padding="same")(x)
-    v = Conv2D(d_model, (3, 3), strides=(1, 1), padding="same")(x)
+def multihead_attention(x, out_channel=64, d_model=32, n_heads=8, query_shape=(128, 24), memory_flange=(8, 8)):
+    q = Conv2D(d_model, (3, 3), strides=(1, 1), padding="same", name="gen_q_conv")(x)
+    k = Conv2D(d_model, (3, 3), strides=(1, 1), padding="same", name="gen_k_conv")(x)
+    v = Conv2D(d_model, (3, 3), strides=(1, 1), padding="same", name="gen_v_conv")(x)
 
     q = split_heads_2d(q, n_heads)
     k = split_heads_2d(k, n_heads)
@@ -151,6 +151,9 @@ def MultiHead_Attention(x, out_channel=64, d_model=16, n_heads=8, query_shape=(3
     
     return output
 
+def MultiHead_Attention(x, **kwargs):
+    return L.Lambda(lambda a: multihead_attention(a, **kwargs))(x)
+
 def seg(feature_num=128,
         timesteps=256,
         multi_grid_layer_n=1,
@@ -188,7 +191,7 @@ def seg(feature_num=128,
     layer_out.append(en_l4)
 
     feature = en_l4
-    feature = L.Lambda(MultiHead_Attention)(feature)
+    f_attn = MultiHead_Attention(feature, out_channel=64, query_shape=(100, 32))
 
     #for i in range(multi_grid_layer_n):
     #    feature = BatchNormalization()(Activation("relu")(feature))
@@ -204,7 +207,14 @@ def seg(feature_num=128,
     #    feature = Conv2D(2 ** 9, (1, 1), strides=(1, 1), padding="same")(multi_grid)
     #    layer_out.append(feature)
 
-    feature = BatchNormalization()(Activation("relu")(feature))
+    #feature = BatchNormalization()(Activation("relu")(feature))
+
+    f_attn = BatchNormalization()(Activation("relu")(f_attn))
+    #f_attn = MultiHead_Attention(f_attn, query_shape=(32, 32))
+    #f_attn = BatchNormalization()(Activation("relu")(f_attn))
+    f_attn = MultiHead_Attention(f_attn, d_model=64, out_channel=128, query_shape=(64, 16))
+    f_attn = BatchNormalization()(Activation("relu")(f_attn))
+    feature = concatenate([feature, f_attn])
 
     feature = Conv2D(2 ** 8, (1, 1), strides=(1, 1), padding="same")(feature)
     feature = add([feature, en_l4])
@@ -213,6 +223,7 @@ def seg(feature_num=128,
 
     skip = de_l1
     de_l1 = BatchNormalization()(Activation("relu")(de_l1))
+    #en_l3 = MultiHead_Attention(en_l3, query_shape=(25, 16))
     de_l1 = concatenate([de_l1, BatchNormalization()(Activation("relu")(en_l3))])
     de_l1 = Dropout(0.4)(de_l1)
     de_l1 = Conv2D(2 ** 7, (1, 1), strides=(1, 1), padding="same")(de_l1)
@@ -222,20 +233,22 @@ def seg(feature_num=128,
 
     skip = de_l2
     de_l2 = BatchNormalization()(Activation("relu")(de_l2))
+    #en_l2 = MultiHead_Attention(en_l2, query_shape=(25, 16))
     de_l2 = concatenate([de_l2, BatchNormalization()(Activation("relu")(en_l2))])
     de_l2 = Dropout(0.4)(de_l2)
     de_l2 = Conv2D(2 ** 6, (1, 1), strides=(1, 1), padding="same")(de_l2)
     de_l2 = add([de_l2, skip])
-    de_l3 = transpose_conv_block(de_l2, 2 ** 5, (3, 3), strides=(2, 2))
+    de_l3 = transpose_conv_block(de_l2, 2 ** 6, (3, 3), strides=(2, 2))
     layer_out.append(de_l3)
 
     skip = de_l3
     de_l3 = BatchNormalization()(Activation("relu")(de_l3))
+    #en_l1 = MultiHead_Attention(en_l1, query_shape=(25, 16))
     de_l3 = concatenate([de_l3, BatchNormalization()(Activation("relu")(en_l1))])
     de_l3 = Dropout(0.4)(de_l3)
-    de_l3 = Conv2D(2 ** 5, (1, 1), strides=(1, 1), padding="same")(de_l3)
+    de_l3 = Conv2D(2 ** 6, (1, 1), strides=(1, 1), padding="same")(de_l3)
     de_l3 = add([de_l3, skip])
-    de_l4 = transpose_conv_block(de_l3, 2 ** 5, (3, 3), strides=(2, 2))
+    de_l4 = transpose_conv_block(de_l3, 2 ** 6, (3, 3), strides=(2, 2))
     layer_out.append(de_l4)
 
     de_l4 = BatchNormalization()(Activation("relu")(de_l4))

@@ -7,6 +7,7 @@ import argparse
 import numpy as np
 
 from project.configuration import MusicNet_Instruments
+from project.central_frequency_352 import CentralFrequency
 
 def hand_crafeted_evaluate(pred, 
                            label,
@@ -163,9 +164,9 @@ def evaluate(preds,
             precision, recall, fscore, avg_overlap_ratio = out
         else:
             # Some hack 
-            pred = preds[i][:,:,1]
-            pred = np.where(pred>preds[i][:,:,0], 1, 0)
-            preds[i] = pred
+            #pred = preds[i][:,:,1]
+            #pred = np.where(pred>preds[i][:,:,0], 1, 0)
+            #preds[i] = pred
             # End hack
 
             est_time, est_hz = gen_frame_info(preds[i], threshold, t_unit) 
@@ -177,7 +178,7 @@ def evaluate(preds,
 
             fscore = 2*precision*recall/(precision+recall+1e-8)
 
-        #print("Prec: {:.4f} Rec: {:.4f} Acc: {:.4f} F-score: {:.4f}".format(precision, recall, accuracy, fscore))
+        print("Prec: {:.4f} Rec: {:.4f} Acc: {:.4f} F-score: {:.4f}".format(precision, recall, accuracy, fscore))
         
         prec += precision
         rec  += recall
@@ -266,11 +267,11 @@ if __name__ == "__main__":
 
     # Parameter settings
     
-    validate = True
+    validate = False
     onsets = False
     
     
-    best = {"th": 0.20}
+    best = {"th": 0.10}
 
     # Validation
     if validate:
@@ -292,8 +293,8 @@ if __name__ == "__main__":
         t_preds = [merge(p) for p in t_preds]
         t_labels = [merge(l) for l in t_labels]
     else:
-        t_preds = [p[:,:,args.spec_instrument] for p in t_preds]
-        t_labels = [l[:,:,args.spec_instrument] for l in t_labels]
+        t_preds = [p[:,:,args.spec_instrument+1] for p in t_preds]
+        t_labels = [l[:,:,args.spec_instrument+1] for l in t_labels]
 
     evaluate(t_preds, t_labels, threshold=best['th'], onsets=onsets)
     print("Result of evalution on " + MusicNet_Instruments[args.spec_instrument])

@@ -128,7 +128,10 @@ python3 SingleSongTest.py \
     --model-path <path/to/pre-trained/model>
 ```
 
+There will be an output file under the same path named *pred.hdf*, which contains the prediction of the given audio. 
+
 To get the predicted midi, add `--to-midi <path/to/save/midi>` flag. The midi will be stored at the given path.
 
 There is also an example script in *scripts* folder called *transcribe_audio.sh*
+
 

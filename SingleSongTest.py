@@ -1,54 +1,23 @@
-
-import sys
-sys.path.append("MusicNet/")
-
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+
 import argparse
 import numpy as np
 import h5py
 
-from PrintPianoRoll import PLOT
-from MusicNet.FeatureExtraction import fetch_harmonic
-#from Evaluation import peak_picking
+from project.Feature.FeatureFirstLayer import feature_extraction
+from project.Feature.FeatureSecondLayer import fetch_harmonic
+from project.Predict import predict, predict_v1
 from project.postprocess import PostProcess
-from project.Evaluate.predict import predict
 
 from project.utils import load_model, model_info
-from project.MelodyExt import feature_extraction
 from project.configuration import MusicNet_Instruments
 
-def create_batches(feature, b_size, timesteps, feature_num=384):
-    frms = np.ceil(len(feature) / timesteps)
-    bss = np.ceil(frms / b_size).astype('int')
-    
-    pb = (feature_num-feature.shape[1]) // 2
-    pt = feature_num-feature.shape[1]-pb
-    l = len(feature)
-    ch = feature.shape[2]
-    pbb = np.zeros((l, pb, ch))
-    ptt = np.zeros((l, pt, ch))
-    feature = np.hstack([pbb, feature, ptt])
-
-    BSS = []
-    for i in range(bss):
-        bs = np.zeros((b_size, timesteps, feature.shape[1], feature.shape[2]))
-        for ii in range(b_size):
-            start_i = i*b_size*timesteps + ii*timesteps
-            if start_i >= len(feature):
-                break
-            end_i = min(start_i+timesteps, len(feature))
-            length = end_i - start_i
-            
-            part = feature[start_i:start_i+length]
-            bs[ii, 0:length] = part
-        BSS.append(bs)
-    
-    return BSS
 
 def main(args):
     # Pre-process features
-    assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again."
-    print("Processing features")
+    assert(os.path.isfile(args.input_audio)), "The given path is not a file!. Please check your input again. Given input: {}".format(audio.input_audio)
+    print("Processing features of input audio: {}".format(args.input_audio))
     Z, tfrL0, tfrLF, tfrLQ, t, cenf, f = feature_extraction(args.input_audio)
     
     # Post-process feature according to the configuration of model
@@ -72,21 +41,20 @@ def main(args):
         feature = np.array([Z, tfrL0, tfrLF, tfrLQ])
         feature = np.transpose(feature, axes=(2, 1, 0))
     
-    feature = create_batches(feature[:,:,channels], b_size=16, timesteps=timesteps)
     model = load_model(args.model_path)
-    
-
     print("Predicting...")
-    pred = predict(feature, model)
+    #pred = predict(feature[:,:,channels], model, timesteps, out_class, batch_size=4, overlap_ratio=2/4)
+    pred = predict_v1(feature[:,:,channels], model, timesteps, batch_size=4)
     
-    p_out = h5py.File("pred.hdf", "w")
-    p_out.create_dataset("0", data=pred)
-    p_out.close()
+    #p_out = h5py.File("pred.hdf", "w")
+    #p_out.create_dataset("0", data=pred)
+    #p_out.close()
 
-    notes, midi = PostProcess(pred)
+    midi = PostProcess(pred, onset_th=args.onset_th, lower_onset_th=None, dura_th=0)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)
+        print("Midi written as {}".format(args.to_midi))
 
 if __name__ == "__main__":
     
@@ -102,6 +70,8 @@ if __name__ == "__main__":
                         type=str, default="Piano Roll")
     parser.add_argument("--to-midi", help="Also output the transcription result to midi file.",
                         type=str)
+    parser.add_argument("--onset-th", help="Onset threshold (5~8)",
+                        type=float, default=7)
     args = parser.parse_args()
     args.num_harmonics = 5
     
