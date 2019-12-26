@@ -56,22 +56,29 @@ def infer_pitch_v2(pitch, shortest=5, offset_interval=6):
     w_on = pitch[:,2]
     w_dura = pitch[:,1]
 
-    peaks, properties = find_peaks(w_on, distance=5, width=5)
+    peaks, properties = find_peaks(w_on, distance=shortest, width=5)
     if len(peaks) == 0:
         return []
 
     notes = []
-    adjust = 5 if shortest==10 else 3
+    adjust = 5 if shortest==10 else 2
     for i in range(len(peaks)-1):
         notes.append({"start": peaks[i]-adjust, "end": peaks[i+1]-adjust, "stren": pitch[peaks[i], 2]})
     notes.append({"start": peaks[-1]-adjust, "end": len(w_on), "stren": pitch[peaks[-1], 2]})
 
+    del_idx = []
     for idx, p in enumerate(peaks):
         upper = int(peaks[idx+1]) if idx<len(peaks)-2 else len(w_dura)
         for i in range(p, upper):
             if np.sum(w_dura[i:i+offset_interval]) == 0:
-                notes[idx]["end"] = i
+                if i - notes[idx]["start"] < shortest:
+                    del_idx.append(idx)
+                else:
+                    notes[idx]["end"] = i
                 break
+
+    for ii, i in enumerate(del_idx):
+        del notes[i-ii]
 
     return notes
     
@@ -124,7 +131,6 @@ def infer_piece(piece, shortest_sec=0.1, offset_sec=0.12, t_unit=0.02):
         Dim: time x 88 x 4 (off, dura, onset, offset)
     """
     assert(piece.shape[1] == 88), "Please down sample the pitch to 88 first (current: {}).format(piece.shape[1])"
-    t_unit = 0.02 # constant, do not modify
     min_align_diff = 1 # to align the onset between notes with a short time difference 
     
     notes = []
@@ -196,14 +202,7 @@ def down_sample(pred):
 
     return dd
 
-def norm(data):
-    return (data-np.mean(data))/np.std(data)
-
-def draw(data, out_name="roll.png"):
-    plt.imshow(data.transpose(), origin="lower", aspect="auto")
-    plt.savefig(out_name, dpi=250)
-
-def interpolate(data, ori_t_unit=0.02, tar_t_unit=0.01):
+def interpolation(data, ori_t_unit=0.02, tar_t_unit=0.01):
     assert(len(data.shape)==2)
 
     ori_x = np.arange(len(data))
@@ -211,42 +210,58 @@ def interpolate(data, ori_t_unit=0.02, tar_t_unit=0.01):
     func = CubicSpline(ori_x, data, axis=0)
     return func(tar_x)
 
-def PostProcess(pred, mode="note", onset_th=7.5, dura_th=2, frm_th=1, t_unit=0.02):
+def norm(data):
+    return (data-np.mean(data))/np.std(data)
+
+def norm_onset_dura(pred, onset_th, dura_th, interpolate=True):
+    length = len(pred)*2 if interpolate else len(pred)
+    norm_pred = np.zeros((length,)+pred.shape[1:])
+    onset = interpolation(pred[:,:,2])
+    dura = interpolation(pred[:,:,1])
+    
+    onset = np.where(onset<dura, 0, onset)
+    norm_onset = norm(onset)
+    onset = np.where(norm_onset<onset_th, 0, norm_onset)
+    norm_pred[:,:,2] = onset
+
+    norm_dura = norm(dura)+onset
+    dura = np.where(norm_dura<dura_th, 0, norm_dura)
+    norm_pred[:,:,1] = dura
+
+    return norm_pred
+
+def norm_split_onset_dura(pred, onset_th, lower_onset_th, split_bound, dura_th, interpolate=True):
+    upper_range = range(4*split_bound, 352)
+    upper_pred = pred[:,upper_range]
+    upper_pred = norm_onset_dura(upper_pred, onset_th, dura_th, interpolate)
+
+    lower_range = range(4*split_bound)
+    lower_pred = pred[:,lower_range]
+    lower_pred = norm_onset_dura(lower_pred, lower_onset_th, dura_th, interpolate)
+
+    return np.hstack([lower_pred, upper_pred])
+
+def draw(data, out_name="roll.png"):
+    plt.imshow(data.transpose(), origin="lower", aspect="auto")
+    plt.savefig(out_name, dpi=250)
+
+def PostProcess(pred, 
+                mode="note", 
+                onset_th=7.5, 
+                lower_onset_th=None,
+                split_bound=36,
+                dura_th=2, 
+                frm_th=1, 
+                t_unit=0.02):
     if mode == "note":
-        onset = pred[:,:,2]
-        dura = pred[:,:,1]
-
-        if True:# and False:
-            # Interpolateion
-            inter_pred = np.zeros((pred.shape[0]*2, pred.shape[1], pred.shape[2]))
-            onset = interpolate(onset)
-            dura = interpolate(dura)
-            
-            onset = np.where(onset<dura, 0, onset)
-            norm_onset = norm(onset)
-            onset = np.where(norm_onset<onset_th, 0, norm_onset)
-            inter_pred[:,:,2] = onset
-
-            norm_dura = norm(dura)+onset
-            dura = np.where(norm_dura<dura_th, 0, norm_dura)
-            inter_pred[:,:,1] = dura
-            notes = infer_piece(down_sample(inter_pred), t_unit=0.01)
-            midi = to_midi(notes, t_unit=t_unit/2)
+        if lower_onset_th is not None:
+            norm_pred = norm_split_onset_dura(pred, onset_th=onset_th, lower_onset_th=lower_onset_th, split_bound=split_bound,
+                                              dura_th=dura_th, interpolate=True)
         else:
-            onset = np.where(onset<dura, 0, onset)
-            # Normalize along each channel and filter by the nomalized value
-            # onset channel
-            norm_onset = norm(onset)
-            onset = np.where(norm_onset<onset_th, 0, norm_onset)
-            pred[:,:,2] = onset
-        
-            # duration channel
-            norm_dura = norm(dura)+onset
-            dura = np.where(norm_dura<dura_th, 0, norm_dura)
-            pred[:,:,1] = dura
-            
-            notes = infer_piece(down_sample(pred))
-            midi = to_midi(notes, t_unit=t_unit)
+            norm_pred = norm_onset_dura(pred, onset_th=onset_th, dura_th=dura_th, interpolate=True)
+
+        notes = infer_piece(down_sample(norm_pred), t_unit=0.01)
+        midi = to_midi(notes, t_unit=t_unit/2)
     
     elif mode == "frame":
         ch_num = pred.shape[2]
@@ -324,8 +339,12 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         # Second item would be onset channel
         # Third item would be offset channel (not yet implement)
         item = pred[:,:,[it*ch_per_inst+i+1 for it in range(iters)]]
-        #ch_container.append(norm(item))
-        ch_container.append(item)
+        ch_container.append(norm(item))
+
+        ### Some hack for frame-level evaluation
+        #ch_container.append(item)
+        #ch_per_inst=2
+        ### End hack
 
     onset_th = threshold_type_converter(onset_th, iters)
     dura_th = threshold_type_converter(dura_th, iters)
