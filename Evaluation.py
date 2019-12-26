@@ -12,7 +12,8 @@ def main(args):
         model_path=args.model_path,
         pred_save_path=args.pred_save_path,
         pred_path=args.pred_path,
-        label_path=args.label_path
+        label_path=args.label_path,
+        onset_th=args.onset_th
     )
 
 if __name__ == "__main__":
@@ -29,6 +30,8 @@ if __name__ == "__main__":
                         type=str, default=None)
     parser.add_argument("-l", "--label-path", help="Path to the generated label file(*_labels.hdf) while make predictions.",
                         type=str, default=None)
+    parser.add_argument("--onset-th", help="Onset threshold (in std)",
+                        type=float, default=7)
 
     args = parser.parse_args()
     main(args)

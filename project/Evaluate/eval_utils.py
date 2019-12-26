@@ -11,54 +11,9 @@ from project.utils import label_conversion
 from project.configuration import MusicNetMIDIMapping
 from project.central_frequency_352 import CentralFrequency
 
+
 def norm(data):
     return (data-np.mean(data))/np.std(data)
-
-def cut_frame(frm, ori_feature_size=352, feature_num=384):
-    feat_num = frm.shape[1]
-    assert(feat_num==feature_num)
-
-    cb = (feat_num-ori_feature_size) // 2
-    c_range = range(cb, cb+ori_feature_size)
-    
-    return frm[:, c_range]
-
-def cut_batch_pred(b_pred):
-    t_len = len(b_pred[0])
-    cut_rr = range(round(t_len*0.25), round(t_len*0.75))
-    cut_pp = []
-    for i in range(len(b_pred)):
-        cut_pp.append(b_pred[i][cut_rr])
-    
-    return np.array(cut_pp)
-
-def create_batches(feature, b_size, timesteps, feature_num=384):
-    frms = np.ceil(len(feature) / timesteps)
-    bss = np.ceil(frms / b_size).astype('int')
-    
-    pb = (feature_num-feature.shape[1]) // 2
-    pt = feature_num-feature.shape[1]-pb
-    l = len(feature)
-    ch = feature.shape[2]
-    pbb = np.zeros((l, pb, ch))
-    ptt = np.zeros((l, pt, ch))
-    feature = np.hstack([pbb, feature, ptt])
-
-    BSS = []
-    for i in range(bss):
-        bs = np.zeros((b_size, timesteps, feature.shape[1], feature.shape[2]))
-        for ii in range(b_size):
-            start_i = i*b_size*timesteps + ii*timesteps
-            if start_i >= len(feature):
-                break
-            end_i = min(start_i+timesteps, len(feature))
-            length = end_i - start_i
-            
-            part = feature[start_i:start_i+length]
-            bs[ii, 0:length] = part
-        BSS.append(bs)
-    
-    return BSS
 
 def roll_down_sample(data, occur_num=2, base=88):
     # The input argument "data" should be thresholded 
@@ -92,7 +47,7 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
     note = []
     for cidx in cand:
         if cidx-last>1:
-            if last-start>min_frm:
+            if last-start>=min_frm:
                 note.append({"onset": start, "offset": last})
             start = cidx
         last = cidx
@@ -128,6 +83,7 @@ def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
 
 def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
     roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
+    roll = np.where(roll>0.5, 1, 0)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
     return gen_onsets_info(roll[:,:,ch], t_unit=t_unit)
@@ -167,7 +123,7 @@ def gen_frame_info_from_notes(midi_notes, t_unit=0.02):
     tmp_midi.instruments.append(inst)
     piano_roll = tmp_midi.get_piano_roll(fs=round(1/t_unit)).transpose()
     low = librosa.note_to_midi("A0")
-    hi = librosa.note_to_midi("C8")
+    hi = librosa.note_to_midi("C8")+1
     piano_roll = piano_roll[:, low:hi]
 
     return gen_frame_info(piano_roll, t_unit=t_unit)

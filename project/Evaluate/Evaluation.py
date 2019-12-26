@@ -11,7 +11,7 @@ import numpy as np
 from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
 from project.utils import load_model, model_info
 from project.Evaluate.eval_utils import * 
-from project.Predict import predict
+from project.Predict import predict, predict_v1
 from project.postprocess import MultiPostProcess, down_sample
 
 from tmp_debug import plot_onsets_info, draw
@@ -269,8 +269,9 @@ class EvalEngine:
                 label = pickle.load(open(label_path, "rb"))
                 for key, ff in feat.items():
                     ll = label[key]
-                    pred = predict(ff[:,:,channels], model, timesteps, out_class, batch_size=pred_batch_size)
-                    
+                    #pred = predict(ff[:,:,channels], model, timesteps, out_class, batch_size=pred_batch_size)
+                    pred = predict_v1(ff[:,:,channels], model, timesteps, batch_size=pred_batch_size)
+
                     yield pred, ll, key
 
 
