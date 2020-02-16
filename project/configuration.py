@@ -95,5 +95,44 @@ class MaestroDatasetInfo(BaseDatasetInfo):
     test_labels=test_wavs
 
 
+class SuDatasetInfo(BaseDatasetInfo):
+    base_path="/data/ade/SuDataset"
+    label_ext="_full.mid"
+    train_wavs=[]
+    test_wavs=[
+        "1 Tchaikovsky",
+        "2 schumann",
+        "3 beethoven",
+        "5 Mozart",
+        "PQ01_Dvorak",
+        "PQ02_Elgar",
+        "PQ03_Farranc",
+        "PQ04_Frank",
+        "PQ05_Hummel",
+        "PQ06_Schostakovich",
+        "PQ07_Schubert",
+        "PQ08_Schubert",
+        "SQ01_Beethoven",
+        "SQ02_Janacek",
+        "SQ03_Schubert",
+        "SQ04_Janacek",
+        "SQ04_Ravel",
+        "SQ05_Mozart",
+        "SQ07_Haydn",
+        "SQ08_Dvorak",
+        "SQ09_Ravel",
+        "RY06_Mahler",
+        "VS01_Schumann",
+        "VS02_Brahms",
+        "VS03_Debussy",
+        "VS04_Franck",
+        "VS05_Mozart",
+        "WQ01_Nielsen",
+        "WQ02_Schoenberg",
+        "WQ03_Cambini",
+        "WQ04_Danzi"
+    ]
+    train_labels=train_wavs
+    test_labels=test_wavs
     
        

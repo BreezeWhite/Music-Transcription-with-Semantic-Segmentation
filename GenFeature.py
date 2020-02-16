@@ -1,10 +1,11 @@
 import os
 import argparse
 
-from project.configuration import MapsDatasetInfo, MusicNetDatasetInfo, MaestroDatasetInfo
+from project.configuration import MapsDatasetInfo, MusicNetDatasetInfo, MaestroDatasetInfo, SuDatasetInfo
 from project.Feature.MapsFeatureExtraction import MapsFeatExt
 from project.Feature.MaestroFeatureExtraction import MaestroFeatExt
 from project.Feature.MusicNetFeatureExtraction import MusicNetFeatExt
+from project.Feature.SuFeatureExtraction import SuFeatExt
 
 
 d_conf = {
@@ -19,6 +20,10 @@ d_conf = {
     "MusicNet": {
         "dataset_info": MusicNetDatasetInfo,
         "processor": MusicNetFeatExt
+    },
+    "Su": {
+        "dataset_info": SuDatasetInfo,
+        "processor": SuFeatExt
     }
 }
 
@@ -46,7 +51,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Feature Processor")
     parser.add_argument("dataset", help="One of Maps, MusicNet, or Maestro", 
-                        type=str, choices=["Maps", "MusicNet", "Maestro"])
+                        type=str, choices=["Maps", "MusicNet", "Maestro", "Su"])
     parser.add_argument("dataset_path", help="Path to the downloaded dataset",
                         type=str)
     parser.add_argument("-p", "--phase", help="Generate training feature or testing feature. Default: %(default)s",

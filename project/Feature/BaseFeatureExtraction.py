@@ -162,7 +162,7 @@ class BaseFeatExt:
                         contains[instrument].append(idx)
             
             key = os.path.basename(gt_path)
-            key = key.rsplit(".", 1)[0] # Remove file extension
+            key = key.replace(self.label_ext, "") # Remove file extension
             labels[key] = label
 
         pickle.dump(labels, open(sub_name+".pickle", "wb"), pickle.HIGHEST_PROTOCOL)
