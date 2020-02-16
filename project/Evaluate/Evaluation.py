@@ -11,6 +11,7 @@ import numpy as np
 from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
 from project.utils import load_model, model_info
 from project.Evaluate.eval_utils import * 
+from project.Evaluate.results import EvalResults
 from project.Predict import predict, predict_v1
 from project.postprocess import MultiPostProcess, down_sample
 
@@ -30,6 +31,7 @@ class EvalEngine:
              t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
         prec, rec, fs = [], [], []
+        eval_results = EvalResults()
         for idx, (pred, label, key) in enumerate(generator(), 1):
             print("{}. {}".format(idx, key))
             
@@ -55,7 +57,7 @@ class EvalEngine:
                 
                 ####### Comment me
                 #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
-                #midi.write("{}_{}.mid".format(key, inst)) if mode=="note" else midi.write("{}_{}_frame.mid".format(key, inst))
+                #midi.write("midi/{}_{}.mid".format(key, inst)) if mode=="note" else midi.write("{}_{}_frame.mid".format(key, inst))
                 #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
                 #######
                 
@@ -72,6 +74,10 @@ class EvalEngine:
                         # Label doesn't have instrument but prediction has
                         num_insts += 1
                         p, r, f = 0, 0, 0
+                        ### Some hack for instrument-informed task
+                        #num_insts -= 1
+                        #continue
+                        ### Comment above!!
                 else:
                     out = eval_func(midi.instruments[0].notes, label, inst_num=inst_num)
                     if out is not None:
@@ -86,14 +92,19 @@ class EvalEngine:
                 ch_r += r
                 ch_f += f
                 print("\t{} Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(MusicNet_Instruments[i], p, r, f))
+                eval_results.add_result(MusicNet_Instruments[i], p, r, f)
+                eval_results.get_each_avg()
 
             ch_p /= num_insts
             ch_r /= num_insts
             ch_f /= num_insts
             print("Final score. Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(ch_p, ch_r, ch_f))
+            eval_results.add_final_result(key, ch_p, ch_r, ch_f)
             prec.append(ch_p)
             rec.append(ch_r)
             fs.append(ch_f)
+
+        eval_results.write_results("./")
         return prec, rec, fs
 
     @classmethod
@@ -129,7 +140,7 @@ class EvalEngine:
             out = mir_eval.transcription.precision_recall_f1_overlap(
                 ref_interval, ref_hz, 
                 est_interval, est_hz, 
-                offset_ratio=None,
+                offset_ratio=0.2,
                 onset_tolerance=0.05
             )
         except ValueError as expt:
@@ -149,7 +160,7 @@ class EvalEngine:
                          label_path=None,
                          inst_th=1.1,
                          onset_th=6, 
-                         dura_th=1, 
+                         dura_th=0, 
                          frm_th=0.1,
                          t_unit=0.02):
         """
@@ -183,7 +194,7 @@ class EvalEngine:
             print("Loading predictions")
             for key, pred in pred_f.items():
                 #### Comment me
-                #if key != "MAPS_MUS-chpn_op35_1_ENSTDkAm":
+                #if key != "MAPS_MUS-chpn_op33_2_ENSTDkAm":
                 #    continue
                 #if len(cont) >= 1:
                 #    break
