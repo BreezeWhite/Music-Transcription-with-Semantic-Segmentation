@@ -88,8 +88,8 @@ For output, you can choose to train on **MPE mode** or **multi-instrument mode**
 
   ```
   python3 TrainModel.py MusicNet \
+      <output/model/name>
       --dataset-path <path/to/extracted/feature> \ 
-      -o <output/model/name>
   ```
 
 
