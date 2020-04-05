@@ -139,6 +139,7 @@ def main(args):
     out_model_name = os.path.join(default_model_path, out_model_name)
     if not os.path.exists(out_model_name):
         os.makedirs(out_model_name)
+    save_model(model, out_model_name, **hparams)
 
     # Weighted loss
     weight = None # Frame mode
@@ -181,7 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dataset-path", help="Path to the root of the dataset that has preprocessed feature",
                         type=str)
     parser.add_argument("--use-harmonic", help="Wether to use HCFP feature to train the model",
-            `            action="store_true")
+                        action="store_true")
     parser.add_argument("--multi-instruments", help="Train on transcribing the note played with different instruments",
                         action="store_true")
     # Channel types

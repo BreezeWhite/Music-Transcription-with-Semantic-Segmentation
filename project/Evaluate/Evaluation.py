@@ -49,9 +49,7 @@ class EvalEngine:
             inst_name = [inst.name for inst in midi.instruments]
 
             ####### Comment me
-            #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
-            #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
-            midi.write(f"midi/{key}.mid")
+            #midi.write(f"midi/{key}.mid")
             #######
 
             mpe = mode.startswith("mpe_") # boolean
@@ -164,7 +162,7 @@ class EvalEngine:
                          inst_th=1.1,
                          onset_th=6, 
                          dura_th=0, 
-                         frm_th=0.4,
+                         frm_th=1,
                          t_unit=0.02):
         """
         Parameters:

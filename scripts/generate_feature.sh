@@ -1,6 +1,5 @@
 #!/bin/bash
 
-<<<<<<< HEAD
 DATASET=Maestro
 D_PATH=/data/maestro-v1.0.0
 PHASE=train
