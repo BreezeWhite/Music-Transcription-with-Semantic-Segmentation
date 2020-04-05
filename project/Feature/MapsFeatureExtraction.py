@@ -1,7 +1,6 @@
 
 import pretty_midi
 import project.Feature.BaseFeatureExtraction as base
-#import project.Feature.BaseFeatureExtraciton.BaseFeatExt
 from project.Feature.LabelFormat import LabelFmt 
 
 class MapsFeatExt(base.BaseFeatExt):

@@ -52,14 +52,15 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
             start = cidx
         last = cidx
     
+    if last-start>=min_frm:
+        note.append({"onset": start, "offset": last})
     return note
 
 def gen_onsets_info_from_notes(midi_notes, t_unit=0.02):
     intervals = []
     pitches = []
     for note in midi_notes:
-        onset = note.start
-        intervals.append([onset, onset+t_unit*2])
+        intervals.append([note.start, note.end])
         pitches.append(librosa.midi_to_hz(note.pitch))
 
     return np.array(intervals), np.array(pitches)
@@ -81,12 +82,37 @@ def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
 
     return np.array(intervals), np.array(pitches)
 
-def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
+def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02, mpe=False):
+    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, mpe=mpe, ori_feature_size=88, feature_num=88)
     roll = np.where(roll>0.5, 1, 0)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
-    return gen_onsets_info(roll[:,:,ch], t_unit=t_unit)
+    interval, pitches = gen_onsets_info(roll[:,:,ch], t_unit=t_unit)
+    if len(interval) == 0:
+        return interval, pitches
+
+    off_roll = label_conversion(label, 0, timesteps=len(label), mpe=mpe, ori_feature_size=88, feature_num=88)
+    off_roll = np.where(off_roll>0.5, 1, 0)
+    
+    for i in range(off_roll[:,:,ch].shape[1]):
+        notes = find_occur(roll[:,i,ch], t_unit=t_unit)
+        for nn in notes:
+            on_idx = nn["onset"]
+            off_roll[on_idx-1:on_idx,i,ch] = 0
+    off_interval, _ = gen_onsets_info(off_roll[:,:,ch], t_unit=t_unit)
+    
+    if len(interval) != len(off_interval):
+        l_on = len(interval)
+        l_off = len(off_interval)
+        print("WARNING!! Interval length inconsistent. Diff: {}".format(abs(l_on-l_off)))
+        print("On len: {}, Off len: {}".format(l_on, l_off))
+        min_l = min(l_on, l_off)
+        interval = interval[:min_l]
+        off_interval = off_interval[:min_l]
+    interval[:,1] = off_interval[:,1]
+    inconsist = np.where(interval[:,1]-interval[:,0] <= 0)
+    interval[inconsist,1] += t_unit*2
+    return interval, pitches
 
 def gen_onsets_info(data, t_unit=0.02):
     #logging.debug("Data shape: %s", data.shape)
@@ -98,7 +124,7 @@ def gen_onsets_info(data, t_unit=0.02):
         notes = find_occur(data[:, i], t_unit=t_unit)
         it = []
         for nn in notes:
-            it.append([nn["onset"]*t_unit, (nn["onset"]+2)*t_unit])
+            it.append([nn["onset"]*t_unit, nn["offset"]*t_unit])
         
         if len(intervals)==0 and len(it) > 0:
             intervals = np.array(it)
@@ -128,8 +154,8 @@ def gen_frame_info_from_notes(midi_notes, t_unit=0.02):
 
     return gen_frame_info(piano_roll, t_unit=t_unit)
 
-def gen_frame_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), ori_feature_size=88, feature_num=88)
+def gen_frame_info_from_label(label, inst_num=1, t_unit=0.02, mpe=False):
+    roll = label_conversion(label, 0, timesteps=len(label), mpe=mpe, ori_feature_size=88, feature_num=88)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
     return gen_frame_info(roll[:,:,ch], t_unit=t_unit)

@@ -82,7 +82,8 @@ def main(args):
     timesteps = args.timesteps
 
     # Label type
-    l_type = BaseLabelType("frame_onset", timesteps=timesteps)
+    mode = "frame_onset"
+    l_type = MusicNetLabelType(mode, timesteps=timesteps)
 
     # Number of output classes
     out_classes = l_type.get_out_classes()
@@ -131,14 +132,28 @@ def main(args):
         # Create new model
         model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
                     out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
+        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #                       out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)
     if not os.path.exists(out_model_name):
         os.makedirs(out_model_name)
 
-    save_model(model, out_model_name, **hparams)
-    model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
+    # Weighted loss
+    weight = None # Frame mode
+    if weight is not None:
+        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
+    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    loss_func = lambda label,pred: mctl_loss(label, pred, out_classes=out_classes, weight=weight)
+    
+    # Use multi-gpu to train the model
+    if False:
+        para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
+        para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
+        model = para_model
+    else:
+        model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
@@ -166,7 +181,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dataset-path", help="Path to the root of the dataset that has preprocessed feature",
                         type=str)
     parser.add_argument("--use-harmonic", help="Wether to use HCFP feature to train the model",
-                        action="store_true")
+            `            action="store_true")
     parser.add_argument("--multi-instruments", help="Train on transcribing the note played with different instruments",
                         action="store_true")
     # Channel types

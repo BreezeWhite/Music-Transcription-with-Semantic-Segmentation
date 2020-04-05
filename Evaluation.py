@@ -19,7 +19,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Evaluate one the dataset")
     parser.add_argument("mode", help="To evaluate on note-level or frame-level. One of the 'note' or 'frame'.",
-                        type=str, choices=['note', 'frame'])
+                        type=str, choices=['note', 'frame', 'mpe_note', 'mpe_frame'])
     parser.add_argument("-f", "--feature-path", help="Path to the generated feature(*.hdf) and label(*.pickle) files",
                         type=str, default=None)
     parser.add_argument("-m", "--model-path", help="Path to the pre-trained model",
