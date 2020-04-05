@@ -134,10 +134,10 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        #model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #            out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
-        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                               out_class=out_classes)
+        model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                    out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
+        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #                       out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)

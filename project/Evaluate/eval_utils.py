@@ -52,7 +52,7 @@ def find_occur(pitch, t_unit=0.02, min_duration=0.03):
             start = cidx
         last = cidx
     
-    if len(note)>0 and note[-1]["offset"] != cand[-1]:
+    if last-start>=min_frm:
         note.append({"onset": start, "offset": last})
     return note
 
@@ -82,8 +82,8 @@ def gen_onsets_info_from_label_v1(label, inst_num=1, t_unit=0.02):
 
     return np.array(intervals), np.array(pitches)
 
-def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, ori_feature_size=88, feature_num=88)
+def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02, mpe=False):
+    roll = label_conversion(label, 0, timesteps=len(label), onsets=True, mpe=mpe, ori_feature_size=88, feature_num=88)
     roll = np.where(roll>0.5, 1, 0)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
@@ -91,17 +91,15 @@ def gen_onsets_info_from_label(label, inst_num=1, t_unit=0.02):
     if len(interval) == 0:
         return interval, pitches
 
-    off_roll =label_conversion(label, 0, timesteps=len(label), mpe=True, ori_feature_size=88, feature_num=88)
+    off_roll = label_conversion(label, 0, timesteps=len(label), mpe=mpe, ori_feature_size=88, feature_num=88)
     off_roll = np.where(off_roll>0.5, 1, 0)
     
-    for i in range(off_roll[:,:,1].shape[1]):
+    for i in range(off_roll[:,:,ch].shape[1]):
         notes = find_occur(roll[:,i,ch], t_unit=t_unit)
         for nn in notes:
             on_idx = nn["onset"]
-            off_roll[on_idx-1:on_idx,i,1] = 0
-        #off_notes = find_occur(off_roll[:,i,1])
-        #print(len(notes), len(off_notes))
-    off_interval, _ = gen_onsets_info(off_roll[:,:,1], t_unit=t_unit)
+            off_roll[on_idx-1:on_idx,i,ch] = 0
+    off_interval, _ = gen_onsets_info(off_roll[:,:,ch], t_unit=t_unit)
     
     if len(interval) != len(off_interval):
         l_on = len(interval)
@@ -156,8 +154,8 @@ def gen_frame_info_from_notes(midi_notes, t_unit=0.02):
 
     return gen_frame_info(piano_roll, t_unit=t_unit)
 
-def gen_frame_info_from_label(label, inst_num=1, t_unit=0.02):
-    roll = label_conversion(label, 0, timesteps=len(label), ori_feature_size=88, feature_num=88)
+def gen_frame_info_from_label(label, inst_num=1, t_unit=0.02, mpe=False):
+    roll = label_conversion(label, 0, timesteps=len(label), mpe=mpe, ori_feature_size=88, feature_num=88)
     midi_ch_mapping = sorted([v for v in MusicNetMIDIMapping.values()])
     ch = midi_ch_mapping.index(inst_num)+1
     return gen_frame_info(roll[:,:,ch], t_unit=t_unit)

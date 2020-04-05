@@ -1,21 +1,22 @@
 import os
 import csv
 from collections import namedtuple
+import numpy as np
 
 
-Result = namedtuple("Result", ["inst_name", "precision", "recall", "fscore"])
+Result = namedtuple("Result", ["inst_name", "precision", "recall", "fscore", "inst_acc", "overlap"])
     
 class EvalResults:
     def __init__(self):
         self.results = []
         self._offsets = {}
 
-    def add_result(self, inst, prec, rec, f):
-        result = Result(inst_name=inst, precision=prec, recall=rec, fscore=f)
+    def add_result(self, inst, prec, rec, f, inst_acc, avg_overlap=0):
+        result = Result(inst_name=inst, precision=prec, recall=rec, fscore=f, inst_acc=inst_acc, overlap=avg_overlap)
         self.results.append(result)
 
-    def add_final_result(self, key, prec, rec, f):
-        result = Result(inst_name="Avg", precision=prec, recall=rec, fscore=f)
+    def add_final_result(self, key, prec, rec, f, inst_acc, avg_overlap=0):
+        result = Result(inst_name="Avg", precision=prec, recall=rec, fscore=f, inst_acc=inst_acc, overlap=avg_overlap)
         self.results.append(result)
         self._offsets[key] = len(self.results)
 
@@ -24,17 +25,21 @@ class EvalResults:
         each_count = {}
         for result in self.results:
             if result.inst_name not in each:
-                each[result.inst_name] = {"precision": 0, "recall": 0, "fscore": 0}
+                each[result.inst_name] = {"precision": 0, "recall": 0, "fscore": 0, "inst_acc": 0, "overlap": 0}
                 each_count[result.inst_name] = 0
             each[result.inst_name]["precision"] += result.precision
             each[result.inst_name]["recall"] += result.recall
             each[result.inst_name]["fscore"] += result.fscore
+            each[result.inst_name]["inst_acc"] += result.inst_acc
+            each[result.inst_name]["overlap"] += result.overlap
             each_count[result.inst_name] += 1
         for key in each.keys():
             cnt = each_count[key]
             each[key]["precision"] /= cnt
             each[key]["recall"] /= cnt
             each[key]["fscore"] /= cnt
+            each[key]["inst_acc"] /= cnt
+            each[key]["overlap"] /= cnt
         return each
     
     def write_results(self, out_path):
@@ -48,7 +53,7 @@ class EvalResults:
             writer = csv.DictWriter(
                 out_file, 
                 delimiter=',',
-                fieldnames=["Test set", "inst_name", "precision", "recall", "fscore"]
+                fieldnames=["Test set", "inst_name", "precision", "recall", "fscore", "inst_acc", "overlap"]
             )
             writer.writeheader()
 
@@ -66,4 +71,13 @@ class EvalResults:
                     writer.writerow(row)
                 offset = v
 
+    def __str__(self):
+        overall_avg = self.get_each_avg()
+        f1 = []
+        avg = overall_avg["Avg"]
+        score_str = "Prec: {:.4f}, Rec: {:.4f} F-score: {:.4f} Inst Acc: {:.4f} Overlap: {:.4f}".format(
+            avg['precision'], avg['recall'], avg['fscore'], avg['inst_acc'], avg['overlap']
+        )
+
+        return score_str
 
