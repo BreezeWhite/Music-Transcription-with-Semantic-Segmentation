@@ -1,10 +1,11 @@
 import os
 import argparse
 
-from project.configuration import MapsDatasetInfo, MusicNetDatasetInfo, MaestroDatasetInfo
+from project.configuration import MapsDatasetInfo, MusicNetDatasetInfo, MaestroDatasetInfo, SuDatasetInfo, Bach10DatasetInfo, URMPDatasetInfo
 from project.Feature.MapsFeatureExtraction import MapsFeatExt
 from project.Feature.MaestroFeatureExtraction import MaestroFeatExt
 from project.Feature.MusicNetFeatureExtraction import MusicNetFeatExt
+from project.Feature.SuFeatureExtraction import SuFeatExt
 
 
 d_conf = {
@@ -19,6 +20,18 @@ d_conf = {
     "MusicNet": {
         "dataset_info": MusicNetDatasetInfo,
         "processor": MusicNetFeatExt
+    },
+    "Su": {
+        "dataset_info": SuDatasetInfo,
+        "processor": SuFeatExt
+    },
+    "URMP": {
+        "dataset_info": URMPDatasetInfo,
+        "processor": SuFeatExt
+    },
+    "Bach": {
+        "dataset_info": Bach10DatasetInfo,
+        "processor": SuFeatExt
     }
 }
 

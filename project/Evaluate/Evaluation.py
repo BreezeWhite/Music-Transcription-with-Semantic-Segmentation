@@ -11,6 +11,7 @@ import numpy as np
 from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
 from project.utils import load_model, model_info
 from project.Evaluate.eval_utils import * 
+from project.Evaluate.results import EvalResults
 from project.Predict import predict, predict_v1
 from project.postprocess import MultiPostProcess, down_sample
 
@@ -29,55 +30,62 @@ class EvalEngine:
              inst_th=1,
              t_unit=0.02):
         lowest_pitch = librosa.note_to_midi("A0")
-        prec, rec, fs = [], [], []
+        eval_results = EvalResults()
         for idx, (pred, label, key) in enumerate(generator(), 1):
             print("{}. {}".format(idx, key))
             
             # Create some variable and validate the threshold
-            if mode=="note":
+            if mode=="note" or mode=="mpe_note":
                 ch_per_inst = 2
-            elif mode=="frame":
-                ch_per_inst = 1
+            elif mode=="frame" or mode=="mpe_frame":
+                ch_per_inst = 1 # train on frame-level
+                ch_per_inst = 2 # train on note-level
             elif mode=="offset":
                 raise NotImplementedError
             else:
-                raise ValueError
+                raise ValueError(f"Unsupported mode: {mode}")
             
             midi = MultiPostProcess(pred, mode=mode, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th, inst_th=inst_th, t_unit=t_unit)
             inst_name = [inst.name for inst in midi.instruments]
 
-            iters = (pred.shape[-1]-1) // ch_per_inst
-            ch_p, ch_r, ch_f = 0, 0, 0
+            ####### Comment me
+            #midi.write(f"midi/{key}.mid")
+            #######
+
+            mpe = mode.startswith("mpe_") # boolean
+            iters = (pred.shape[-1]-1) // ch_per_inst if not mpe else 1
+            ch_p, ch_r, ch_f, ch_o = 0, 0, 0, 0
             num_insts = 0 
+            inst_tp = 0 
             for i in range(iters):
                 inst = MusicNet_Instruments[i]
                 inst_num = MusicNetMIDIMapping[inst]
-                
-                ####### Comment me
-                #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
-                #midi.write("{}_{}.mid".format(key, inst)) if mode=="note" else midi.write("{}_{}_frame.mid".format(key, inst))
-                #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
-                #######
                 
                 if inst in inst_name:
                     inst_idx = inst_name.index(inst)
                     assert(midi.instruments[inst_idx].name==inst)
                     midi_notes = midi.instruments[inst_idx].notes
-                    out = eval_func(midi_notes, label, inst_num=inst_num)
+                    out = eval_func(midi_notes, label, inst_num=inst_num, mpe=mpe)
                     if out is not None:
                         # Label has instrument and also prediction
                         num_insts += 1
-                        p, r, f = out
+                        p, r, f, avg_overlap = out
+                        inst_tp += 1
                     else:
                         # Label doesn't have instrument but prediction has
                         num_insts += 1
-                        p, r, f = 0, 0, 0
+                        p, r, f, avg_overlap = 0, 0, 0, 0
+
+                        ### Some hack for instrument-informed task
+                        #num_insts -= 1
+                        #continue
+                        ### Comment above!!
                 else:
                     out = eval_func(midi.instruments[0].notes, label, inst_num=inst_num)
                     if out is not None:
                         # Label has instrument but prediction doesn't
                         num_insts += 1
-                        p, r, f = 0, 0, 0
+                        p, r, f, avg_overlap = 0, 0, 0, 0
                     else:
                         # Label and prediction neither has instrument
                         continue
@@ -85,21 +93,24 @@ class EvalEngine:
                 ch_p += p
                 ch_r += r
                 ch_f += f
-                print("\t{} Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(MusicNet_Instruments[i], p, r, f))
+                ch_o += avg_overlap
+                print("\t{} Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}, Overlap: {:.4f}".format(MusicNet_Instruments[i], p, r, f, avg_overlap))
+                eval_results.add_result(MusicNet_Instruments[i], p, r, f, 0 if f==0 else 1, avg_overlap)
 
             ch_p /= num_insts
             ch_r /= num_insts
             ch_f /= num_insts
-            print("Final score. Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}".format(ch_p, ch_r, ch_f))
-            prec.append(ch_p)
-            rec.append(ch_r)
-            fs.append(ch_f)
-        return prec, rec, fs
+            ch_o /= num_insts
+            ch_inst = inst_tp/num_insts
+            print("Final score. Prec: {:.4f}, Rec: {:.4f}, F: {:.4f}, Inst Acc: {:.4f}, Overlap: {:.4f}".format(ch_p, ch_r, ch_f, ch_inst, ch_o))
+            eval_results.add_final_result(key, ch_p, ch_r, ch_f, ch_inst, ch_o)
+        
+        return eval_results
 
     @classmethod
-    def evaluate_frame(cls, pred, label, inst_num=1, t_unit=0.02):
+    def evaluate_frame(cls, pred, label, inst_num=1, t_unit=0.02, mpe=False):
         # The input pred should be thresholded
-        ref_time, ref_hz = gen_frame_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
+        ref_time, ref_hz = gen_frame_info_from_label(label, inst_num=inst_num, t_unit=t_unit, mpe=mpe)
         if len(ref_time) == 0:
             # The instrument is not presented in this piece
             return None
@@ -110,12 +121,12 @@ class EvalEngine:
         precision, recall, accuracy = out[0:3]
         prec_chroma, rec_chroma, acc_chroma = out[7:10]
         fscore = 2*precision*recall/(precision+recall+1e-8)
-        return precision, recall, fscore
+        return precision, recall, fscore, 0
 
     @classmethod
-    def evaluate_onsets(cls, pred, label, inst_num=1, t_unit=0.02):
+    def evaluate_onsets(cls, pred, label, inst_num=1, t_unit=0.02, mpe=False):
         # The input pred should be thresholded
-        ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit)
+        ref_interval, ref_hz = gen_onsets_info_from_label(label, inst_num=inst_num, t_unit=t_unit, mpe=mpe)
         if len(ref_interval) == 0:
             # The instrument is not presented in this piece
             return None
@@ -136,8 +147,7 @@ class EvalEngine:
             print(expt)
             out = [0, 0, 0, 0]
 
-        precision, recall, fscore, avg_overlap_ratio = out
-        return precision, recall, fscore
+        return out
 
     @classmethod
     def evaluate_dataset(cls, 
@@ -149,8 +159,8 @@ class EvalEngine:
                          label_path=None,
                          inst_th=1.1,
                          onset_th=6, 
-                         dura_th=1, 
-                         frm_th=0.1,
+                         dura_th=0, 
+                         frm_th=3,
                          t_unit=0.02):
         """
         Parameters:
@@ -166,11 +176,11 @@ class EvalEngine:
             
         You should either provide one of (feature_path, model_path) pair or (pred_path, label_path) pair.
         """
-        if mode not in ["note", "frame"]:
+        if mode not in ["note", "frame", "mpe_note", "mpe_frame"]:
             err_info = "Please specify the mode with one of the value 'note' or 'frame'."
             raise ValueError(err_info)
         else:
-            eval_func = cls.evaluate_onsets if mode=="note" else cls.evaluate_frame
+            eval_func = cls.evaluate_onsets if "note" in mode else cls.evaluate_frame
 
         if feature_path is not None and model_path is not None:
             print("Predicting on the dataset: %s", feature_path)
@@ -183,7 +193,7 @@ class EvalEngine:
             print("Loading predictions")
             for key, pred in pred_f.items():
                 #### Comment me
-                #if key != "MAPS_MUS-chpn_op35_1_ENSTDkAm":
+                #if key != "5 Mozart":
                 #    continue
                 #if len(cont) >= 1:
                 #    break
@@ -197,15 +207,11 @@ class EvalEngine:
         else:
             raise ValueError("Unknown parameter combination")
 
-        lprec, lrec, lfs = cls.eval(generator, eval_func, mode=mode, inst_th=inst_th, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
-        length = len(lprec)
-        avg_prec = sum(lprec)/length
-        avg_rec = sum(lrec)/length
-        avg_fs = sum(lfs)/length
-        f_score = 2*avg_prec*avg_rec/(avg_prec+avg_rec)
-        print("Precision: {:.4f}, Recall: {:.4f}, F-score: {:.4f} Avg F-score: {:.4f}".format(avg_prec, avg_rec, f_score, avg_fs))
+        results = cls.eval(generator, eval_func, mode=mode, inst_th=inst_th, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
+        results.write_results("./")
+        print("\n", results)
         print("onset th: {}".format(onset_th))
-        return avg_prec, avg_rec, avg_fs
+        return results
 
     @classmethod
     def predict_dataset(

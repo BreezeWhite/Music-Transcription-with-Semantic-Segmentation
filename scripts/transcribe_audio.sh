@@ -12,3 +12,4 @@ python3 SingleSongTest.py \
     -m $MODEL      \
     --onset-th $TH \
     --to-midi "$MIDI_NAME"
+

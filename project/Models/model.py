@@ -67,10 +67,12 @@ def smooth_loss(y_true, y_pred, gamma=0.1, total_chs=22, weight=None):
     cross_entropy = -target*tf.log(sigmoid_p) - neg_target*tf.log(neg_sigmoid_p)
     return tf.reduce_mean(cross_entropy)
 
-def mctl_loss(y_true, y_pred, weight=None):
+def mctl_loss(y_true, y_pred, out_classes=3, weight=None):
     "Abbreviate from 'Mixed Cross enTropy and L1' loss"
-    cross_loss = smooth_loss(y_true, y_pred, weight=weight)
-    l1_loss = distance_loss(y_true, y_pred, exp=1)
+    cross_loss = smooth_loss(y_true, y_pred,total_chs=out_classes,  weight=weight)
+    #l1_loss = distance_loss(y_true, y_pred, exp=1)
+    #l_inf_loss = distance_loss(y_true, y_pred, exp=-1)
+
     total_loss = cross_loss# + 0.1*l1_loss
     return total_loss
 

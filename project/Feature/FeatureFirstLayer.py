@@ -20,7 +20,7 @@ def STFT(x, fr, fs, Hop, h):
     t = np.arange(Hop, np.ceil(len(x)/float(Hop))*Hop, Hop)
     N = int(fs/float(fr))
     window_size = len(h)
-    f = fs*np.linspace(0, 0.5, np.round(N/2), endpoint=True)
+    f = fs*np.linspace(0, 0.5, np.round(N/2).astype('int'), endpoint=True)
     Lh = int(np.floor(float(window_size-1) / 2))
     tfr = np.zeros((int(N), len(t)), dtype=np.float)     
         
@@ -165,12 +165,13 @@ def parallel_extract(x, samples, MaxSample, fr, fs, Hop, h, fc, tc, g, NumPerOct
                 tmpZ[seg_id] = tfrLF*tfrLQ
             except Exception as exc:
                 print("Something generated an exception: {}".format(exc))
+                raise exc
     
     return tmpL0, tmpLF, tmpLQ, tmpZ, f, q, t, CenFreq
     
 def feature_extraction(
         filename,
-        Hop=882,
+        hop=0.02, # in seconds
         w=7939,
         fr=2.0,
         fc=27.5,
@@ -185,6 +186,7 @@ def feature_extraction(
        x = np.mean(x, axis = 1)
     x = signal.resample_poly(x, Down_fs, fs)
     fs = Down_fs # sampling frequency
+    Hop = round(Down_fs*hop)
     x = x.astype('float32')
     h = scipy.signal.blackmanharris(w) # window size
     g = np.array(g)
