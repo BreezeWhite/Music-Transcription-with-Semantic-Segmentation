@@ -6,6 +6,7 @@ import pickle
 import librosa
 import logging
 import numpy as np
+import pretty_midi
 from tqdm import trange
 
 from project.Feature.FeatureSecondLayer import process_feature_song_list
@@ -58,7 +59,7 @@ class BaseFeatExt:
                 sub_name = os.path.join(self.save_path, ("{}_{}_{}".format(self.file_prefix, self.num_per_file, str(i+1))))
 
                 # Process audio features
-                process_feature_song_list(sub_name, wav_paths, harmonic=self.harmonic, num_harmonic=HarmonicNum)
+                #process_feature_song_list(sub_name, wav_paths, harmonic=self.harmonic, num_harmonic=HarmonicNum)
 
                 # Process labels
                 self.process_labels(sub_name, label_paths)
@@ -78,13 +79,13 @@ class BaseFeatExt:
         all_wavs = []
         for path in self.wav_path:
             all_wavs += glob.glob(os.path.join(path, "*.wav"))
-        
-        # Parse label files and sort the order of paths in consistent with audio paths
+
+        # Parse label files
         name_path_map = {}
         for path in self.label_path:
             files = glob.glob(os.path.join(path, "*{}".format(self.label_ext)))
             for ff in files:
-                name = os.path.basename(ff).replace(self.label_ext, "")
+                name = self.name_transform(os.path.basename(ff))
                 name_path_map[name] = ff
         names = [os.path.basename(wav).replace(".wav", "") for wav in all_wavs]
         all_labels = []
@@ -101,6 +102,13 @@ class BaseFeatExt:
             lower_b = i*self.num_per_file
             upper_b = (i+1)*self.num_per_file
             yield all_wavs[lower_b:upper_b], all_labels[lower_b:upper_b]
+
+    def name_transform(self, original):
+        """
+        Transform a ground truth file name to the correponding audio name (without extension).
+        """
+        return original.replace(self.label_ext, "")
+
 
     def process_labels(self, sub_name, files):
         '''
@@ -161,10 +169,109 @@ class BaseFeatExt:
                         contains[instrument].append(name)
                         contains[instrument].append(idx)
             
-            key = os.path.basename(gt_path)
-            key = key.replace(self.label_ext, "") # Remove file extension
+            key = self.name_transform(os.path.basename(gt_path))
             labels[key] = label
 
         pickle.dump(labels, open(sub_name+".pickle", "wb"), pickle.HIGHEST_PROTOCOL)
         return contains
+
+
+
+class MaestroFeatExt(BaseFeatExt):
+    # Override
+    def load_label(self, file_path, **kwargs):
+        midi = pretty_midi.PrettyMIDI(file_path)
+        inst = midi.instruments[0] # Assumed there only exits piano
+
+        contents = []
+        last_sec = 0
+        for note in inst.notes:
+            onset = note.start
+            offset = note.end
+            pitch = note.pitch
+            contents.append(LabelFmt(onset, offset, pitch))
+            last_sec = max(last_sec, offset)
+
+        return contents, last_sec
+
+
+class MapsFeatExt(BaseFeatExt):
+    # Override
+    def load_label_midi(self, file_path, **kwargs):
+        midi = pretty_midi.PrettyMIDI(file_path)
+        inst = midi.instruments[0]
+
+        content = []
+        last_sec = 0
+        for note in inst.notes:
+            onset = note.start
+            offset = note.end
+            pitch = note.pitch
+            content.append(LabelFmt(onset, offset, pitch))
+            last_sec = max(last_sec, offset)
+
+        return content, last_sec
+
+
+    def load_label(self, file_path, sample_rate=44100):
+        with open(file_path, "r") as ll_file:
+            lines = ll_file.readlines()
+
+        content = []
+        last_sec = 0
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "":
+                continue
+            onset, offset, note = lines[i].split("\t")
+            onset, offset, note = float(onset), float(offset), int(note.strip())
+            content.append(LabelFmt(onset, offset, note)) 
+            last_sec = max(last_sec, offset)
+        
+        return content, last_sec
+
+
+class MusicNetFeatExt(BaseFeatExt):
+    # Override
+    def load_label(self, file_path, sample_rate=44100):
+        content = []
+        last_sec = 0
+        with open(file_path, 'r') as f:
+            reader = csv.DictReader(f, delimiter=',')
+            max_sample = 0
+            for label in reader:
+                start_time = float(label['start_time'])/sample_rate
+                end_time   = float(label['end_time'])/sample_rate
+                instrument = int(label['instrument'])
+                note       = int(label['note'])
+                start_beat = float(label['start_beat'])
+                end_beat   = float(label['end_beat'])
+                note_value = label['note_value']
+
+                cc = LabelFmt(start_time, end_time, note, instrument, start_beat, end_beat, note_value)
+                content.append(cc)
+                last_sec = max(last_sec, end_time)
+
+        return content, last_sec
+
+
+class SuFeatExt(BaseFeatExt):
+    # Override
+    def load_label(self, file_path, sample_rate=44100):
+        midi = pretty_midi.PrettyMIDI(file_path)
+        content = []
+        last_sec = 0
+        for inst in midi.instruments:
+            inst_num = inst.program
+            for note in inst.notes:
+                cc = LabelFmt(note.start, note.end, note.pitch, inst_num)
+                content.append(cc)
+                last_sec = max(last_sec, note.end)
+        return content, last_sec
+
+
+class RhythmFeatExt(SuFeatExt):
+    # Override
+    def name_transform(self, original):
+        new_name = original.replace("align_mid", "ytd_audio")
+        return new_name.replace(".mid", ".mp3")
 
