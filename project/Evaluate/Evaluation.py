@@ -61,8 +61,6 @@ class EvalEngine:
                 inst = MusicNet_Instruments[i]
                 inst_num = MusicNetMIDIMapping[inst]
                 
-                
-                
                 if inst in inst_name:
                     inst_idx = inst_name.index(inst)
                     assert(midi.instruments[inst_idx].name==inst)
@@ -162,7 +160,7 @@ class EvalEngine:
                          inst_th=1.1,
                          onset_th=6, 
                          dura_th=0, 
-                         frm_th=1,
+                         frm_th=3,
                          t_unit=0.02):
         """
         Parameters:

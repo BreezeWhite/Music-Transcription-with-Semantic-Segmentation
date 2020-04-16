@@ -113,6 +113,15 @@ class SuDatasetInfo(BaseDatasetInfo):
     test_labels=test_wavs
     
 
+class Su10DatasetInfo(BaseDatasetInfo):
+    base_path="/data/ade/Su-10"
+    label_ext=".mid"
+    train_wavs=[]
+    test_wavs=["audio"]
+    train_labels=train_wavs
+    test_labels=["labels"]
+
+
 class URMPDatasetInfo(BaseDatasetInfo):
     base_path="/data/ade/URMP"
     label_ext=".mid"
@@ -121,6 +130,14 @@ class URMPDatasetInfo(BaseDatasetInfo):
     train_labels=train_wavs
     test_labels=["labels"]
 
+
+class RhythmDatasetInfo(BaseDatasetInfo):
+    base_path="/data/ade/sma_rhythm"
+    label_ext=".mid"
+    train_wavs=[]
+    test_wavs=["wavs"]
+    train_labels=train_wavs
+    test_labels=["midi"]
 
 class Bach10DatasetInfo(BaseDatasetInfo):
     base_path="/data/ade/bach10"
