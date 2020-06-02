@@ -32,13 +32,15 @@ MODEL=model/Maestro-Attn-Note-Smooth-SingleGPU # Threshold: 5.5
 #MODEL=model/Maestro-Maps-Attn-Note-Smooth # Threshold: 7
 #MODEL=model/ICASSP-2019-Maestro-Note # Threshold: 5.5
 MODEL=model/Maestro-Smooth-Ultimate-Attn-V1 # Threshold: 5.5
-MODEL=model/Maestro-Smooth-Ultimate # Threshold: 5.5
+MODEL=model/Maestro-Smooth-Ultimate-Attn-SingleGPU
+#MODEL=model/Attn-Focal-LS-Strange # Threshold: 5.5
+#MODEL=model/Maestro-Smooth-Ultimate # Threshold: 5.5
 #MODEL=model/Maestro-Attn-V4.2.1 # Threshold 5
 #MODEL=model/Maestro-Smooth-G0.2 # Threshold 5.5
-MODEL=model/Dilated-Conv-Maestro-Note-Smooth # Threshold 5.2
+#MODEL=model/Dilated-Conv-Maestro-Note-Smooth # Threshold 5.2
 
-TH=5.2
-MIDI_NAME="Swordland_conv.mid"
+TH=5.5
+MIDI_NAME="Swordland_strange.mid"
 
 python3 SingleSongTest.py \
     -i "$AUDIO"    \

@@ -41,24 +41,24 @@ TH=8
 
 ### Additional Dataset ###
 MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
-PRED_FOLDER=su_smooth_v1.0.2
+PRED_FOLDER=su_10_smooth_v1.0.2
 TH=8
 
-#MODEL_NAME=Dilated-Conv-MusicNet-Note-Smooth
-#PRED_FOLDER=su_icassp_2019_LS
-#TH=8
+MODEL_NAME=Dilated-Conv-MusicNet-Note-Smooth
+PRED_FOLDER=su_10_icassp_2019_LS
+TH=8
 
-#MODEL_NAME=ICASSP-2019-MusicNet-Note
-#PRED_FOLDER=su_icassp_2019
-#TH=7
+MODEL_NAME=ICASSP-2019-MusicNet-Note
+PRED_FOLDER=su_10_icassp_2019
+TH=7
 
 #MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
 #PRED_FOLDER=maps_on_musicnet_smooth_v1.0.2
 #TH=8
 
-MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
-PRED_FOLDER=urmp_22_smooth_v1.0.2
-TH=8
+#MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
+#PRED_FOLDER=urmp_22_smooth_v1.0.2
+#TH=8
 
 #MODEL_NAME=Dilated-Conv-MusicNet-Note-Smooth
 #PRED_FOLDER=urmp_22_icassp_2019_LS
@@ -89,7 +89,7 @@ TH=8
 #PRED_FOLDER=su_10_icassp_2019_musicnet_mpe
 #TH=0.34
 
-MODE=note
+MODE=mpe_frame
 PRED_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
 LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
 
