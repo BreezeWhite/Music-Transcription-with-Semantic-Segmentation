@@ -57,7 +57,7 @@ def q_func(y_true, gamma=0.1, total_chs=22):
     return (1-gamma)*y_true + gamma/total_chs
     #return (1-gamma)*y_true + (1-y_true)*gamma/total_chs
 
-def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.2, total_chs=22, weight=None):
+def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.1, total_chs=22, weight=None):
     clip_value = lambda v_in: tf.clip_by_value(v_in, 1e-8, 1.0)
     target = clip_value(q_func(y_true, gamma=gamma, total_chs=total_chs))
     neg_target = clip_value(q_func(1-y_true, gamma=gamma, total_chs=total_chs))
@@ -67,17 +67,18 @@ def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.2, total_chs=22, wei
     cross_entropy = -target*tf.log(sigmoid_p) - neg_target*tf.log(neg_sigmoid_p)
     
     # Focal loss
+    """
     zeros = array_ops.zeros_like(sigmoid_p, dtype=sigmoid_p.dtype)
     pos_p_sub = array_ops.where(target>=sigmoid_p, target-sigmoid_p, zeros)
     neg_p_sub = array_ops.where(neg_target>=neg_sigmoid_p, neg_target-neg_sigmoid_p, zeros)
     focal_cross_entropy = -alpha * (pos_p_sub**beta) * tf.log(sigmoid_p) \
                           -(1-alpha) * (neg_p_sub**beta) * tf.log(neg_sigmoid_p)
-
-    return tf.reduce_mean(focal_cross_entropy)
+    """
+    return tf.reduce_mean(cross_entropy)
 
 def mctl_loss(y_true, y_pred, out_classes=3, weight=None):
     "Abbreviate from 'Mixed Cross enTropy and L1' loss"
-    cross_loss = smooth_loss(y_true, y_pred,total_chs=out_classes,  weight=weight)
+    cross_loss = smooth_loss(y_true, y_pred,total_chs=out_classes, weight=weight)
     #l1_loss = distance_loss(y_true, y_pred, exp=1)
     #l_inf_loss = distance_loss(y_true, y_pred, exp=-1)
 

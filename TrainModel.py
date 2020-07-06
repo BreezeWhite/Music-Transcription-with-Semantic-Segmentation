@@ -27,7 +27,7 @@ dataflow_cls = {
     "Maps":     DataFlows.MapsDataflow
 }
 
-default_model_path = "./model"
+default_model_path = "./model-paper"
 
 
 def train(
@@ -86,7 +86,7 @@ def main(args):
     # Label type
     mode = "frame_onset"
     #l_type = BaseLabelType(mode, timesteps=timesteps)
-    #mode = "multi_instrument_note"
+    mode = "multi_instrument_note"
     l_type = MusicNetLabelType(mode, timesteps=timesteps)
 
     # Number of output classes
@@ -97,14 +97,16 @@ def main(args):
         # load configuration of previous training
         feature_type, channels, out_classes, timesteps = model_info(args.input_model)
         ch_num = len(channels)
-    else:
-        if args.dataset == "MusicNet":
-            # Sepcial settings for MusicNet that has multiple instruments presented
-            if args.use_harmonic:
-                ch_num = HarmonicNum * 2
-                channels = [i for i in range(ch_num)]
-                feature_type = "HCFP"
 
+    # Check whether to use harmonic feature
+    if args.use_harmonic:
+        ch_num = HarmoniNum * ch_num
+        tmp_ch = []
+        for ch in channels:
+            tmp_ch += list(range((ch-1)*HarmonicNum, ch*HarmonicNum))
+        channels = tmp_ch
+        feature_type = "HCFP"
+    
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
@@ -134,10 +136,10 @@ def main(args):
         model = load_model(args.input_model)
     else:
         # Create new model
-        model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                    out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
-        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #                       out_class=out_classes)
+        #model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #            out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
+        model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+                               out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)

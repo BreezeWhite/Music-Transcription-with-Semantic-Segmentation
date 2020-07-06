@@ -59,7 +59,7 @@ class BaseFeatExt:
                 sub_name = os.path.join(self.save_path, ("{}_{}_{}".format(self.file_prefix, self.num_per_file, str(i+1))))
 
                 # Process audio features
-                #process_feature_song_list(sub_name, wav_paths, harmonic=self.harmonic, num_harmonic=HarmonicNum)
+                process_feature_song_list(sub_name, wav_paths, harmonic=self.harmonic, num_harmonic=HarmonicNum)
 
                 # Process labels
                 self.process_labels(sub_name, label_paths)

@@ -332,7 +332,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         raise NotImplementedError
     else:
         raise ValueError
-    assert((pred.shape[-1]-1)%ch_per_inst == 0)
+    assert((pred.shape[-1]-1)%ch_per_inst == 0), f"Input shape: {pred.shape}"
     
     ch_container = []
     iters = (pred.shape[-1]-1)//ch_per_inst
