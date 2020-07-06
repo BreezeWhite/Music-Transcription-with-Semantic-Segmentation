@@ -51,7 +51,7 @@ class EvalEngine:
             ####### Comment me
             #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
             #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
-            midi.write(f"midi/{key}.mid")
+            #midi.write(f"midi/{key}.mid")
             #######
 
             mpe = mode.startswith("mpe_") # boolean

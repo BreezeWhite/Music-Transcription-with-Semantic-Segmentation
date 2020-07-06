@@ -1,8 +1,8 @@
 #!/bin/bash
 
-MODEL_NAME=full_model_all_feature_musicnet
-PRED_FOLDER=full_model_all_feature_musicnet
-TH=5
+MODEL_NAME=feature-compare_spec-only
+PRED_FOLDER=feature-compare_spec-only
+TH=0.3
 
 MODE=note
 PRED_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"

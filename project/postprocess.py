@@ -220,11 +220,13 @@ def norm_onset_dura(pred, onset_th, dura_th, interpolate=True):
     dura = interpolation(pred[:,:,1])
     
     onset = np.where(onset<dura, 0, onset)
-    norm_onset = norm(onset)
+    #norm_onset = norm(onset)
+    norm_onset = np.copy(onset)
     onset = np.where(norm_onset<onset_th, 0, norm_onset)
     norm_pred[:,:,2] = onset
 
-    norm_dura = norm(dura)+onset
+    #norm_dura = norm(dura)+onset
+    norm_dura = dura+onset
     dura = np.where(norm_dura<dura_th, 0, norm_dura)
     norm_pred[:,:,1] = dura
 
@@ -260,6 +262,7 @@ def PostProcess(pred,
         else:
             norm_pred = norm_onset_dura(pred, onset_th=onset_th, dura_th=dura_th, interpolate=True)
 
+        norm_pred = np.where(norm_pred>0, norm_pred+1, 0)
         notes = infer_piece(down_sample(norm_pred), t_unit=0.01)
         midi = to_midi(notes, t_unit=t_unit/2)
     
@@ -272,7 +275,7 @@ def PostProcess(pred,
         else:
             raise ValueError("Unknown channel length: {}".format(ch_num))
         
-        p = norm(mix) 
+        #p = norm(mix) 
         p = np.where(p>frm_th, 1, 0)
         p = roll_down_sample(p)
         
@@ -341,12 +344,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         # Second item would be onset channel
         # Third item would be offset channel (not yet implement)
         item = pred[:,:,[it*ch_per_inst+i+1 for it in range(iters)]]
-        ch_container.append(norm(item))
-
-        ### Some hack for frame-level evaluation
-        #ch_container.append(item)
-        #ch_per_inst=2
-        ### End hack
+        ch_container.append(item)
 
     if mode.startswith("mpe_"):
         # Some different process for none-instrument care cases
@@ -355,7 +353,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         chs = ch_container[0].shape[-1]
         for i in range(ch_per_inst):
             pp = ch_container[i]
-            pp[:,:,0] = np.sum(pp, axis=2)
+            pp[:,:,0] = np.average(pp, axis=2)
             ch_container[i] = pp
 
     onset_th = threshold_type_converter(onset_th, iters)
