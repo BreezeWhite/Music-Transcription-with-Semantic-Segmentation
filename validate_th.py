@@ -8,7 +8,7 @@ if __name__ == "__main__":
     label_path = f"prediction-paper/val_feature-compare_{feature_type}/feature-compare_{feature_type}_labels.pickle"
 
     mode = "note"
-    step = np.arange(5, 8, 0.5)
+    step = np.arange(0.25, 0.5, 0.05)
     best_fs = 0
     best_th = step[0]
     for idx, i in enumerate(step, 1):

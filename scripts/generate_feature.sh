@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DATASET=Maestro
-D_PATH=/data/Maestro
-PHASE=train
-PIECE_PER_FILE=400
+DATASET=Maps
+D_PATH=/data/Maps
+PHASE=test
+PIECE_PER_FILE=60
 OUTPUT=${D_PATH}/${PHASE}_feature/harmonic
 
 cd ..

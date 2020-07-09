@@ -7,9 +7,10 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 
 from project.Evaluate.Evaluation import EvalEngine
 
-feature_path = "/data/MusicNet/test_feature"
-model_path = "../model-paper/full_model_all_feature_musicnet"
-pred_save_path = "../prediction-paper/full_model_all_feature_musicnet"
+feature_path = "/data/Maps/test_feature/harmonic"
+#feature_path = "/host/home/AMT_Project/Maestro-val_feature/harmonic"
+model_path = "../model-paper/feature-compare_harmonic"
+pred_save_path = "../prediction-paper/feature-compare_harmonic"
 
 generator = EvalEngine.predict_dataset(feature_path, model_path, pred_save_path)
 
