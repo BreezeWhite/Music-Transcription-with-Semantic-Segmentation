@@ -4,11 +4,29 @@ MODEL_NAME=feature-compare_harmonic
 PRED_FOLDER=val_feature-compare_harmonic
 TH=0.3
 
+# ------------------------------ Maestro -----------------------------------
+
+# Attn-LS
+#MODEL_NAME=Maestro-Attn-Note-Smooth
+#PRED_FOLDER=maestro_attn_note_smooth
+#TH=0.05
+
+# Conv
+#MODEL_NAME=ICASSP-2019-Maestro-Note
+#PRED_FOLDER=icassp_2019_maestro_note
+#TH=0.07
+
+# Conv-LS
+#MODEL_NAME=Dilated-Conv-Maestro-Note-Smooth
+#PRED_FOLDER=dilated_conv_maestro_note_smooth
+#TH=0.07
+
+# --------------------------------------------------------------------------
 # ----------------------------- MusicNet -----------------------------------
 # Attn-LS
-MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
-PRED_FOLDER=musicnet_smooth_v1.0.2
-TH=0.045
+#MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
+#PRED_FOLDER=musicnet_smooth_v1.0.2
+#TH=0.045
 
 # Conv
 #MODEL_NAME=ICASSP-2019-MusicNet-Note
@@ -22,7 +40,7 @@ TH=0.045
 
 # --------------------------------------------------------------------------
 
-MODE=mpe_note
+MODE=note
 PRED_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
 LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
 
