@@ -2,7 +2,8 @@
 
 MODEL_NAME=feature-compare_harmonic
 PRED_FOLDER=val_feature-compare_harmonic
-TH=0.3
+PRED_FOLDER=feature-compare_harmonic
+TH=4
 
 # ------------------------------ Maestro -----------------------------------
 
@@ -41,8 +42,8 @@ TH=0.3
 # --------------------------------------------------------------------------
 
 MODE=note
-PRED_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
-LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
+PRED_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
+LABEL_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
 
 #PRED_PATH="./prediction/${PRED_FOLDER}/pred.hdf"
 #LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
