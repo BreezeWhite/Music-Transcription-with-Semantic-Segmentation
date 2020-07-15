@@ -57,7 +57,7 @@ def q_func(y_true, gamma=0.1, total_chs=22):
     return (1-gamma)*y_true + gamma/total_chs
     #return (1-gamma)*y_true + (1-y_true)*gamma/total_chs
 
-def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.1, total_chs=22, weight=None):
+def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.2, total_chs=22, weight=None):
     clip_value = lambda v_in: tf.clip_by_value(v_in, 1e-8, 1.0)
     target = clip_value(q_func(y_true, gamma=gamma, total_chs=total_chs))
     neg_target = clip_value(q_func(1-y_true, gamma=gamma, total_chs=total_chs))

@@ -1,9 +1,8 @@
 #!/bin/bash
 
-MODEL_NAME=feature-compare_harmonic
-PRED_FOLDER=val_feature-compare_harmonic
-PRED_FOLDER=feature-compare_harmonic
-TH=4
+MODEL_NAME=feature-compare_harmonic-musicnet
+PRED_FOLDER=val_feature-compare_harmonic-musicnet
+TH=5.5
 
 # ------------------------------ Maestro -----------------------------------
 
@@ -41,7 +40,7 @@ TH=4
 
 # --------------------------------------------------------------------------
 
-MODE=note
+MODE=mpe_note
 PRED_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
 LABEL_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
 
