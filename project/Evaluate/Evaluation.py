@@ -51,7 +51,7 @@ class EvalEngine:
             ####### Comment me
             #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
             #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
-            #midi.write(f"midi/{key}.mid")
+            midi.write(f"midi/{key}.mid")
             #######
 
             mpe = mode.startswith("mpe_") # boolean
@@ -162,7 +162,7 @@ class EvalEngine:
                          inst_th=1.1,
                          onset_th=6, 
                          dura_th=0, 
-                         frm_th=3,
+                         frm_th=2,
                          t_unit=0.02):
         """
         Parameters:
@@ -195,7 +195,7 @@ class EvalEngine:
             print("Loading predictions")
             for key, pred in pred_f.items():
                 #### Comment me
-                #if key != "5 Mozart":
+                #if key != "2628":
                 #    continue
                 #if len(cont) >= 2:
                 #    break
@@ -210,9 +210,11 @@ class EvalEngine:
             raise ValueError("Unknown parameter combination")
 
         results = cls.eval(generator, eval_func, mode=mode, inst_th=inst_th, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
-        results.write_results("./")
         print("\n", results)
-        print("onset th: {}".format(onset_th))
+        if "note" in mode:
+            print("onset th: {}".format(onset_th))
+        elif "frame" in mode:
+            print("frame th: {}".format(frm_th))
         return results
 
     @classmethod

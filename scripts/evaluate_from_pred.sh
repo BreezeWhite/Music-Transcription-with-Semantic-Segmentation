@@ -1,8 +1,9 @@
 #!/bin/bash
 
-MODEL_NAME=feature-compare_harmonic-musicnet
-PRED_FOLDER=val_feature-compare_harmonic-musicnet
-TH=5.5
+MODEL_NAME=feature-compare_spec+ceps+gcos
+PRED_FOLDER=val_feature-compare_ceps-only
+PRED_FOLDER=feature-compare_spec+ceps+gcos
+TH=6
 
 # ------------------------------ Maestro -----------------------------------
 
@@ -21,28 +22,35 @@ TH=5.5
 #PRED_FOLDER=dilated_conv_maestro_note_smooth
 #TH=0.07
 
+# Others
+#MODEL_NAME=traditional-crossentropy
+#PRED_FOLDER=traditional_bce
+#TH=0.5
+
 # --------------------------------------------------------------------------
 # ----------------------------- MusicNet -----------------------------------
 # Attn-LS
-#MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
-#PRED_FOLDER=musicnet_smooth_v1.0.2
-#TH=0.045
+MODEL_NAME=MusicNet-Attn-Note-Smooth-V1.0.2
+PRED_FOLDER=musicnet_smooth_v1.0.2
+TH=8
 
 # Conv
 #MODEL_NAME=ICASSP-2019-MusicNet-Note
 #PRED_FOLDER=icassp_2019_musicnet_note
-#TH=0.05
+#PRED_FOLDER=maps_on_musicnet_icassp_2019
+#TH=7
 
 #Conv-LS
 #MODEL_NAME=Dilated-Conv-MusicNet-Note-Smooth
 #PRED_FOLDER=dilated_conv_musicnet_note_smooth
-#TH=0.04
+#PRED_FOLDER=maps_on_musicnet_icassp_2019_LS
+#TH=8
 
 # --------------------------------------------------------------------------
 
-MODE=mpe_note
-PRED_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
-LABEL_PATH="./prediction-paper/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
+MODE=note
+PRED_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_predictions.hdf"
+LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
 
 #PRED_PATH="./prediction/${PRED_FOLDER}/pred.hdf"
 #LABEL_PATH="./prediction/${PRED_FOLDER}/${MODEL_NAME}_labels.pickle"
