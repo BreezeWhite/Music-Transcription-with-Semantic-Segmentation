@@ -8,7 +8,7 @@ import h5py
 from project.Feature.FeatureFirstLayer import feature_extraction
 from project.Feature.FeatureSecondLayer import fetch_harmonic
 from project.Predict import predict, predict_v1
-from project.postprocess import PostProcess
+from project.postprocess import MultiPostProcess
 
 from project.utils import load_model, model_info
 from project.configuration import MusicNet_Instruments
@@ -50,7 +50,7 @@ def main(args):
     #p_out.create_dataset("0", data=pred)
     #p_out.close()
 
-    midi = PostProcess(pred, onset_th=args.onset_th, lower_onset_th=None, dura_th=0)
+    midi = MultiPostProcess(pred, mode="note", onset_th=args.onset_th, dura_th=0.5, frm_th=3, inst_th=1.1, t_unit=0.02)
     
     if args.to_midi is not None:
         midi.write(args.to_midi)

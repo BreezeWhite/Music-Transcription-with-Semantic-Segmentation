@@ -243,27 +243,27 @@ def PostProcess(pred,
                 dura_th=2, 
                 frm_th=1, 
                 t_unit=0.02):
-    if mode == "note":
+    if mode=="note" or mode=="mpe_note":
         if lower_onset_th is not None:
             norm_pred = norm_split_onset_dura(pred, onset_th=onset_th, lower_onset_th=lower_onset_th, split_bound=split_bound,
                                               dura_th=dura_th, interpolate=True)
         else:
             norm_pred = norm_onset_dura(pred, onset_th=onset_th, dura_th=dura_th, interpolate=True)
 
+        norm_pred = np.where(norm_pred>0, norm_pred+1, 0)
         notes = infer_piece(down_sample(norm_pred), t_unit=0.01)
         midi = to_midi(notes, t_unit=t_unit/2)
     
-    elif mode == "frame":
+    elif mode=="frame" or mode=="mpe_frame":
         ch_num = pred.shape[2]
         if ch_num == 2:
             mix = pred[:,:,1]
         elif ch_num == 3:
-            mix = pred[:,:,1] + pred[:,:,2]
+            mix = (pred[:,:,1] + pred[:,:,2])/2
         else:
             raise ValueError("Unknown channel length: {}".format(ch_num))
         
-        #p = norm(mix) 
-        p = mix
+        p = norm(mix) 
         p = np.where(p>frm_th, 1, 0)
         p = roll_down_sample(p)
         
@@ -271,13 +271,15 @@ def PostProcess(pred,
         for idx in range(p.shape[1]):
             p_note = find_occur(p[:,idx], t_unit=t_unit)
             for nn in p_note:
-                note = {}
-                note["pitch"] = idx
-                note["start"] = nn["onset"]
-                note["end"] = nn["offset"]
-                note["stren"] = mix[int(nn["onset"]*t_unit), idx*4]
+                note = {
+                    "pitch": idx,
+                    "start": nn["onset"],
+                    "end": nn["offset"],
+                    "stren": mix[int(nn["onset"]*t_unit), idx*4]
+                }
                 notes.append(note)
         midi = to_midi(notes, t_unit=t_unit)
+
     else:
         raise ValueError("Supported mode are ['note', 'frame']. Given mode: {}".format(mode))
 
@@ -312,15 +314,16 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         dura_th: Threshold of duration channel. Type of list or float
         inst_th: Threshold of deciding a instrument is present or not according to Std. of prediction.
     """
-    if mode == 'note':
+    if mode=='note' or mode=='mpe_note':
         ch_per_inst = 2
-    elif mode == 'frame':
+    elif mode=='frame' or mode=='mpe_frame':
         ch_per_inst = 1
-    elif mode == 'offset':
+        ch_per_inst = 2 # frame-level hack
+    elif mode=='offset':
         raise NotImplementedError
     else:
         raise ValueError
-    assert((pred.shape[-1]-1)%ch_per_inst == 0)
+    assert((pred.shape[-1]-1)%ch_per_inst == 0), f"Input shape: {pred.shape}"
     
     ch_container = []
     iters = (pred.shape[-1]-1)//ch_per_inst
@@ -331,11 +334,15 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         item = pred[:,:,[it*ch_per_inst+i+1 for it in range(iters)]]
         ch_container.append(norm(item))
 
-        ### Some hack for frame-level evaluation
-        del ch_container[-1]
-        ch_container.append(item)
-        ch_per_inst=2
-        ### End hack
+    if mode.startswith("mpe_"):
+        # Some different process for none-instrument care cases
+        # Merge all channels into first channel
+        iters = 1
+        chs = ch_container[0].shape[-1]
+        for i in range(ch_per_inst):
+            pp = ch_container[i]
+            pp[:,:,0] = np.average(pp, axis=2)
+            ch_container[i] = pp
 
     onset_th = threshold_type_converter(onset_th, iters)
     dura_th = threshold_type_converter(dura_th, iters)
@@ -354,7 +361,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
             std += np.std(ch)
             ent += entropy(ch)
             normed_ch.append(ch)
-
+        print("std: {:.3f} ent: {:.3f} mult: {:.3f}".format(std/ch_per_inst, ent/ch_per_inst, std*ent/ch_per_inst**2))
         if iters>1 and (std/ch_per_inst < inst_th):
             continue
 
@@ -363,7 +370,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
 
         inst_name = MusicNet_Instruments[i]
         program = MusicNetMIDIMapping[inst_name]
-        inst = pretty_midi.Instrument(program=program-1, name=inst_name)
+        inst = pretty_midi.Instrument(program=program, name=inst_name)
         inst.notes = midi.instruments[0].notes
         out_midi.instruments.append(inst)
 

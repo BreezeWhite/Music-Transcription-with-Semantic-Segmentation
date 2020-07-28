@@ -26,7 +26,7 @@ dataflow_cls = {
     "Maps":     DataFlows.MapsDataflow
 }
 
-default_model_path = "./model"
+default_model_path = "./model-paper"
 
 
 def train(
@@ -82,7 +82,7 @@ def main(args):
     timesteps = args.timesteps
 
     # Label type
-    l_type = BaseLabelType("frame_onset", timesteps=timesteps)
+    l_type = MusicNetLabelType(args.label_type, timesteps=timesteps)
 
     # Number of output classes
     out_classes = l_type.get_out_classes()
@@ -92,14 +92,16 @@ def main(args):
         # load configuration of previous training
         feature_type, channels, out_classes, timesteps = model_info(args.input_model)
         ch_num = len(channels)
-    else:
-        if args.dataset == "MusicNet":
-            # Sepcial settings for MusicNet that has multiple instruments presented
-            if args.use_harmonic:
-                ch_num = HarmonicNum * 2
-                channels = [i for i in range(ch_num)]
-                feature_type = "HCFP"
 
+    # Check whether to use harmonic feature
+    if args.use_harmonic:
+        ch_num = HarmonicNum * ch_num
+        tmp_ch = []
+        for ch in channels:
+            tmp_ch += list(range((ch-1)*HarmonicNum, ch*HarmonicNum))
+        channels = tmp_ch
+        feature_type = "HCFP"
+    
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
@@ -131,14 +133,29 @@ def main(args):
         # Create new model
         model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
                     out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
+        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
+        #                       out_class=out_classes)
 
     # Save model and configurations
     out_model_name = os.path.join(default_model_path, out_model_name)
     if not os.path.exists(out_model_name):
         os.makedirs(out_model_name)
 
-    save_model(model, out_model_name, **hparams)
-    model.compile(optimizer="adam", loss={'prediction': sparse_loss}, metrics=['accuracy'])
+
+    # Weighted loss
+    weight = None # Frame mode
+    if weight is not None:
+        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
+    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
+    loss_func = lambda label,pred: mctl_loss(label, pred, out_classes=out_classes, weight=weight)
+    
+    # Use multi-gpu to train the model
+    if False:
+        para_model = multi_gpu_model(model, gpus=2, cpu_merge=False)
+        para_model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
+        model = para_model
+    else:
+        model.compile(optimizer="adam", loss={'prediction': loss_func}, metrics=['accuracy'])
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
@@ -157,7 +174,10 @@ def main(args):
           v_steps   = args.val_steps)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")
+    parser = argparse.ArgumentParser(
+        "Polyphonic music transcription project done by MCTLab, IIS Sinica.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     
     parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps", choices=["Maestro", "MusicNet", "Maps"],
                         type=str)
@@ -167,31 +187,32 @@ if __name__ == "__main__":
                         type=str)
     parser.add_argument("--use-harmonic", help="Wether to use HCFP feature to train the model",
                         action="store_true")
-    parser.add_argument("--multi-instruments", help="Train on transcribing the note played with different instruments",
-                        action="store_true")
+    parser.add_argument("--label-type", help="Type of label to be transformed to",
+                        type=str, choices=["frame", "frame_onset", "multi_instrument_frame", "multi_instrument_note"], 
+                        default="frame_onset")
     # Channel types
     #   0: Z
     #   1: Spec
     #   2: GCoS
     #   3: Ceps
-    parser.add_argument("-c", "--channels", help="Use specific channels of feature to train (default: %(default)d)",
+    parser.add_argument("-c", "--channels", help="Use specific channels of feature to train ",
                         type=int, nargs="+", default=[1, 3]) 
     parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
                         action="store_true")
-    parser.add_argument("-t", "--timesteps", help="Time width for each input feature (default: %(default)d)",
+    parser.add_argument("-t", "--timesteps", help="Time width for each input feature",
                         type=int, default=256)
     
     # Arguments about the training progress
-    parser.add_argument("-e", "--epoch", help="Number of epochs to train (default: %(default)d)",
+    parser.add_argument("-e", "--epoch", help="Number of epochs to train",
                         type=int, default=10)
-    parser.add_argument("-s", "--steps", help="Training steps for each epoch (default: %(default)d)",
+    parser.add_argument("-s", "--steps", help="Training steps for each epoch",
                         type=int, default=2000)
-    parser.add_argument("-vs", "--val-steps", help="Validation steps (default: %(default)d)",
+    parser.add_argument("-vs", "--val-steps", help="Validation steps",
                         type=int, default=500)
     parser.add_argument("-i", "--input-model", help="If given, then will continue to train on a pre-trained model")
-    parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase (default: %(default)d)",
+    parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase",
                         type=int, default=8)
-    parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase (default: %(default)d)",
+    parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase",
                         type=int, default=16)
     parser.add_argument("--early-stop", help="Early stop the training after given # epochs",
                         type=int, default=4)

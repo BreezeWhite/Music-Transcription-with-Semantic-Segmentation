@@ -3,7 +3,7 @@
 cd ..
 
 AUDIO="TestZone/MAPS_MUS-mz_331_3_ENSTDkCl.wav"
-MODEL=model/Maestro-Attn-Note-Smooth
+MODEL=CheckPoint/Maestro-Note
 TH=5.5
 MIDI_NAME="mz.mid"
 

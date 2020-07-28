@@ -6,8 +6,8 @@ from project.Dataflow.BaseDataflow import BaseDataflow
 class MaestroDataflow(BaseDataflow):
     
     structure = {
-        "train":       "train_feature",
-        "train_label": "train_feature",
+        "train":       "train_feature/harmonic",
+        "train_label": "train_feature/harmonic",
         "val":         "train_feature",
         "val_label":   "train_feature",
         "test":        "feature_test",
@@ -58,12 +58,12 @@ class MaestroDataflow(BaseDataflow):
 
 class MusicNetDataflow(MaestroDataflow):
     structure = {
-        "train":       "train_feature",
-        "train_label": "train_feature",
-        "val":         "train_feature",
-        "val_label":   "train_feature",
-        "test":        "test_feature",
-        "test_label":  "test_feature"
+        "train":       "train_feature/harmonic",
+        "train_label": "train_feature/harmonic",
+        "val":         "train_feature/harmonic",
+        "val_label":   "train_feature/harmonic",
+        "test":        "test_feature/harmonic",
+        "test_label":  "test_feature/harmonic"
     }
 
     
