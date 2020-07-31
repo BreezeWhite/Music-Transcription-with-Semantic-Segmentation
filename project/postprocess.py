@@ -1,19 +1,20 @@
 import sys
 sys.path.append("./")
+import math
 
 import h5py
-import math
 import pretty_midi
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 from scipy.interpolate import CubicSpline
 from scipy.signal import find_peaks
 from librosa import note_to_midi
+
 from project.configuration import MusicNet_Instruments, MusicNetMIDIMapping
 from project.Evaluate.eval_utils import roll_down_sample, find_occur
+
 
 def plot3(pred):
     fig, axes = plt.subplots(nrows=2)
