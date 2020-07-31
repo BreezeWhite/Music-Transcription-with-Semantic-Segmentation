@@ -15,5 +15,5 @@ python3 TrainModel.py Maestro $out_model \
     --timesteps 128          \
     --early-stop $early_stop \
     --train-batch-size 8     \
-    --val-batch-size 8       \
-    -i ./model/ICASSP-2019-Maestro-note
+    --val-batch-size 8       
+#    -i ./model/ICASSP-2019-Maestro-note

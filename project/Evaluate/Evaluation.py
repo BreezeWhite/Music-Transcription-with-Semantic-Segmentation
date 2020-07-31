@@ -9,13 +9,11 @@ import mir_eval
 import numpy as np
 
 from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
-from project.utils import load_model, model_info
+from project.utils import ModelInfo
 from project.Evaluate.eval_utils import * 
 from project.Evaluate.results import EvalResults
 from project.Predict import predict, predict_v1
 from project.postprocess import MultiPostProcess, down_sample
-
-from tmp_debug import plot_onsets_info, draw
 
 
 class EvalEngine:
@@ -49,9 +47,7 @@ class EvalEngine:
             inst_name = [inst.name for inst in midi.instruments]
 
             ####### Comment me
-            #draw(midi.get_piano_roll()[21:109].transpose(), save_name="{}_{}.png".format(key, inst))
-            #draw(sub_pred[:,:,1], save_name="{}_{}.png".format(key, inst))
-            midi.write(f"midi/{key}.mid")
+            #midi.write(f"midi/{key}.mid")
             #######
 
             mpe = mode.startswith("mpe_") # boolean
@@ -134,10 +130,6 @@ class EvalEngine:
             return None
 
         est_interval, est_hz = gen_onsets_info_from_notes(pred, t_unit=t_unit)
-        ### Comment me
-        #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
-        ###
-
         try:
             out = mir_eval.transcription.precision_recall_f1_overlap(
                 ref_interval, ref_hz, 
@@ -269,10 +261,9 @@ class EvalEngine:
         
         if not isinstance(hdf_paths, list):
             hdf_paths = [hdf_paths]
-        
-        model = load_model(model_path)
-        feature_type, channels, out_class, timesteps = model_info(model_path)
-        
+       
+        minfo = ModelInfo()
+        model = minfo.load_model(model_path)
         for hdf_path in hdf_paths:
             with h5py.File(hdf_path, "r") as feat:
                 label_path = hdf_path.replace(".hdf", ".pickle")
@@ -280,7 +271,7 @@ class EvalEngine:
                 for key, ff in feat.items():
                     ll = label[key]
                     #pred = predict(ff[:,:,channels], model, timesteps, out_class, batch_size=pred_batch_size)
-                    pred = predict_v1(ff[:,:,channels], model, timesteps, batch_size=pred_batch_size)
+                    pred = predict_v1(ff[:,:,minfo.input_channels], model, minfo.timesteps, batch_size=pred_batch_size)
 
                     yield pred, ll, key
 

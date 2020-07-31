@@ -19,5 +19,6 @@ python3 Evaluation.py $MODE \
     -p $PRED_PATH  \
     -l $LABEL_PATH \
     --onset-th $TH
-    
+
+echo "Onset threshold: ${TH}"
 echo $PRED_FOLDER

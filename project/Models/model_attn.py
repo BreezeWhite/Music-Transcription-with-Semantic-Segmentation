@@ -5,7 +5,6 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.convolutional import Conv1D, MaxPooling1D, UpSampling2D, UpSampling1D,Conv2D,Conv2DTranspose,MaxPooling2D,Cropping2D
 from keras.optimizers import SGD, Adam
 from keras import regularizers
-#from project.utils import load_model, model_copy
 
 import tensorflow as tf
 from tensorflow.python.ops import array_ops
@@ -158,13 +157,13 @@ def seg(feature_num=128,
         timesteps=256,
         multi_grid_layer_n=1,
         multi_grid_n=3,
-        input_channel=1,
+        ch_num=1,
         prog = False,
         out_class=2
         ):
     layer_out = []
 
-    input_score = Input(shape=(timesteps, feature_num, input_channel), name="input_score_48")
+    input_score = Input(shape=(timesteps, feature_num, ch_num), name="input_score_48")
     en = Conv2D(2 ** 5, (7, 7), strides=(1, 1), padding="same")(input_score)
     layer_out.append(en)
 

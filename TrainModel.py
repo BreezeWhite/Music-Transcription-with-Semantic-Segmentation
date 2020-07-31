@@ -1,18 +1,19 @@
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+import json
 
 import argparse
-
-from project.LabelType import BaseLabelType
-from project.utils import load_model, save_model, model_info
-from project.configuration import HarmonicNum
-from project.Models.model import seg, sparse_loss
-from project.Dataflow import DataFlows
-
+import tensorflow as tf
 from keras import callbacks
 from keras.utils import multi_gpu_model
-import tensorflow as tf
+
+from project.LabelType import MusicNetLabelType
+from project.utils import ModelInfo
+from project.configuration import HarmonicNum
+from project.Models.model import sparse_loss, mctl_loss
+from project.Dataflow import DataFlows
+
 
 dataset_paths = {
     "Maestro":  "/data/Maestro",
@@ -26,14 +27,14 @@ dataflow_cls = {
     "Maps":     DataFlows.MapsDataflow
 }
 
-default_model_path = "./model-paper"
+default_model_path = "./model"
 
 
 def train(
         model, 
         generator_train, 
         generator_val,
-        epoch=1,
+        epochs=1,
         callbacks=None, 
         steps=6000, 
         v_steps=3000
@@ -42,7 +43,7 @@ def train(
     model.fit_generator(
         generator_train, 
         validation_data=generator_val,
-        epochs=epoch,
+        epochs=epochs,
         steps_per_epoch=steps,
         validation_steps=v_steps,
         callbacks=callbacks,
@@ -61,6 +62,9 @@ def main(args):
 
     # Parameters that will be passed to dataflow
     df_params = {}
+
+    # Information about the model (load/store/create)
+    minfo = ModelInfo()
     
     # Handling root path to the dataset
     d_path = dataset_paths[args.dataset]
@@ -69,45 +73,43 @@ def main(args):
         d_path = args.dataset_path
     
     # Number of channels that model need to know about
-    ch_num = len(args.channels)
-    channels = args.channels
+    minfo.input_channels = args.channels
     
     # Type of feature to use
-    feature_type = "CFP"
+    minfo.feature_type = "CFP"
     
     # Output model name
-    out_model_name = args.output_model_name
+    minfo.name = args.output_model_name
     
     # Feature length on time dimension
-    timesteps = args.timesteps
+    minfo.timesteps = args.timesteps
 
     # Label type
-    l_type = MusicNetLabelType(args.label_type, timesteps=timesteps)
+    minfo.label_type = args.label_type
+    l_type = MusicNetLabelType(args.label_type, timesteps=minfo.timesteps)
 
     # Number of output classes
-    out_classes = l_type.get_out_classes()
+    minfo.output_classes = l_type.get_out_classes()
 
-    # Continue to train on a pre-trained model
+    # Continue to fine-tune on a pre-trained model
     if args.input_model is not None:
-        # load configuration of previous training
-        feature_type, channels, out_classes, timesteps = model_info(args.input_model)
-        ch_num = len(channels)
+        # load configuration from previous training stage
+        model = minfo.load_model(args.input_model)
 
     # Check whether to use harmonic feature
     if args.use_harmonic:
-        ch_num = HarmonicNum * ch_num
         tmp_ch = []
-        for ch in channels:
+        for ch in minfo.input_channels:
             tmp_ch += list(range((ch-1)*HarmonicNum, ch*HarmonicNum))
-        channels = tmp_ch
-        feature_type = "HCFP"
+        minfo.input_channels = tmp_ch
+        minfo.feature_type = "HCFP"
     
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
-    df_params["channels"]  = channels
-    df_params["timesteps"] = timesteps
-    df_params["out_classes"]  = out_classes
+    df_params["channels"]  = minfo.input_channels
+    df_params["timesteps"] = minfo.timesteps
+    df_params["out_classes"]  = minfo.output_classes
     df_params["dataset_path"] = d_path
     df_params["label_conversion_func"] = l_type.get_conversion_func()
 
@@ -120,34 +122,36 @@ def main(args):
     df_params["phase"] = "val"
     val_df = df_cls(**df_params)
 
-    hparams["channels"]       = channels
-    hparams["timesteps"]      = timesteps
-    hparams["feature_type"]   = feature_type
-    hparams["output_classes"] = out_classes
+    hparams["channels"]       = minfo.input_channels
+    hparams["timesteps"]      = minfo.timesteps
+    hparams["feature_type"]   = minfo.feature_type
+    hparams["output_classes"] = minfo.output_classes
     
     print("Creating/loading model")
     # Create model
-    if args.input_model is not None:
-        model = load_model(args.input_model)
-    else:
-        # Create new model
-        model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                    out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
-        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #                       out_class=out_classes)
+    if args.input_model is None:
+        model = minfo.create_model(model_type="attn")
+
+    # Loss function
+    loss_func_mapping = {
+        "focal": sparse_loss,
+        "smooth": lambda label, pred: mctl_loss(label, pred, out_classes=minfo.output_classes),
+        "bce": tf.keras.losses.BinaryCrossentropy
+    }
+    loss_func = loss_func_mapping[args.loss_function]
+
+    # Store other training information
+    minfo.dataset = args.dataset
+    minfo.epochs = args.epochs
+    minfo.steps = args.steps
+    minfo.loss_function = args.loss_function
+    minfo.train_batch_size = args.train_batch_size
+    minfo.val_batch_size = args.val_batch_size
+    minfo.early_stop = args.early_stop
 
     # Save model and configurations
-    out_model_name = os.path.join(default_model_path, out_model_name)
-    if not os.path.exists(out_model_name):
-        os.makedirs(out_model_name)
-
-
-    # Weighted loss
-    weight = None # Frame mode
-    if weight is not None:
-        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
-    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
-    loss_func = lambda label,pred: mctl_loss(label, pred, out_classes=out_classes, weight=weight)
+    print(minfo)
+    minfo.save_model(model, default_model_path)
     
     # Use multi-gpu to train the model
     if False:
@@ -159,7 +163,7 @@ def main(args):
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
-    checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
+    checkpoint  = callbacks.ModelCheckpoint(os.path.join(default_model_path, minfo.name, "weights.h5"), 
                                             monitor="val_loss", save_best_only=False, save_weights_only=True)
     tensorboard = callbacks.TensorBoard(log_dir=os.path.join("tensorboard", args.output_model_name),
                                         write_images=True)
@@ -168,7 +172,7 @@ def main(args):
     print("Start training")
     # Start training
     train(model, train_df, val_df,
-          epoch     = args.epoch,
+          epochs    = args.epochs,
           callbacks = callback_list,
           steps     = args.steps,
           v_steps   = args.val_steps)
@@ -190,6 +194,8 @@ if __name__ == "__main__":
     parser.add_argument("--label-type", help="Type of label to be transformed to",
                         type=str, choices=["frame", "frame_onset", "multi_instrument_frame", "multi_instrument_note"], 
                         default="frame_onset")
+    parser.add_argument("--loss-function", help="Use specific type of loss functions.",
+                         type=str, default="smooth", choices=["focal", "smooth", "bce"])
     # Channel types
     #   0: Z
     #   1: Spec
@@ -203,7 +209,7 @@ if __name__ == "__main__":
                         type=int, default=256)
     
     # Arguments about the training progress
-    parser.add_argument("-e", "--epoch", help="Number of epochs to train",
+    parser.add_argument("-e", "--epochs", help="Number of epochs to train",
                         type=int, default=10)
     parser.add_argument("-s", "--steps", help="Training steps for each epoch",
                         type=int, default=2000)
