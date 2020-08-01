@@ -13,7 +13,7 @@ from tensor2tensor.layers.common_attention import local_attention_2d, split_head
 
 from project.Models.model import seg
 from project.Models import model_attn
-from project.configuration import get_MusicNet_label_num_mapping, get_instruments_num, MusicNet_Instruments
+from project.configuration import get_MusicNet_label_num_mapping, get_instruments_num, MusicNet_Instruments, HarmonicNum
 
 
 def sigmoid(x):
@@ -170,7 +170,7 @@ class ModelInfo:
         if is_para:
             para_model = multi_gpu_model(model, gpus=self._num_gpus)
             para_model.load_weights(weight_path)
-            model = param_model.layers[-2]
+            model = para_model.layers[-2]
         else:
             model.load_weights(weight_path)
 
@@ -196,12 +196,13 @@ class ModelInfo:
         if not os.path.exists(path):
             os.makedirs(path)
         
-        # Save model architecture
+        # Save model architecture/weights
         open(os.path.join(path, "arch.yaml"), "w").write(model.to_yaml())
+        model.save_weights(os.path.join(path, "weights.h5"))
         
         # Save related configurations
         self.save_configuration(path)
-        print(f"Model saved to {save_path}.")
+        print(f"Model saved to {save_path}/{self.name}.")
 
     def save_configuration(self, save_path):
         conf = {
@@ -252,8 +253,11 @@ class ModelInfo:
                 Early stopping: {self.early_stop}
         """
 
-    def __str__(self):
+    def __repr__(self):
         return self._construct_description()
+
+    def __str__(self):
+        return self.description
 
     @property
     def feature_type(self):
@@ -272,12 +276,15 @@ class ModelInfo:
 
     @input_channels.setter
     def input_channels(self, value):
-        available = [0, 1, 2, 3]
         if not isinstance(value, list):
             value = list(value)
 
-        if not all([v in available for v in value]):
-            raise ValueError(f"Invalid channel numbers: {value}. Available: {available}.")
+        if len(value) < 5:
+            if not all(v in [0, 1, 2, 3] for v in value):
+                raise ValueError(f"Invalid channel numbers: {value}. Available: [0, 1, 2, 3].")
+        else:
+            if len(value)%(HarmonicNum+1) != 0:
+                raise ValueError(f"Invalid channel number of harmonic feature: {value}. Length should be multiple of {HarmonicNum+1}.")
         
         self._input_channels = value
         

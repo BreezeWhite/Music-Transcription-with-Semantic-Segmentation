@@ -1,2 +1,0 @@
-Model name,Feature type,Input channels,Output classes,Timesteps
-MusicNet_CFP_MPE,CFP,"[1, 3]",2,128

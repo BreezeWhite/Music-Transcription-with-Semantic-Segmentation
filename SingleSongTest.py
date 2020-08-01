@@ -10,7 +10,7 @@ from project.Feature.FeatureSecondLayer import fetch_harmonic
 from project.Predict import predict_v1
 from project.postprocess import MultiPostProcess
 from project.utils import ModelInfo
-from project.configuration import MusicNet_Instruments
+from project.configuration import MusicNet_Instruments, HarmonicNum
 
 
 def main(args):
@@ -31,7 +31,7 @@ def main(args):
         
         spec = []
         ceps = []
-        for i in range(args.num_harmonics):
+        for i in range(args.num_harmonics+1):
             spec.append(fetch_harmonic(tfrL0, cenf, i))
             ceps.append(fetch_harmonic(tfrLQ, cenf, i))
         
@@ -48,10 +48,17 @@ def main(args):
     print("Predicting...")
     pred = predict_v1(feature[:,:,minfo.input_channels], model, minfo.timesteps, batch_size=4)
     
+    mode_mapping = {
+        "frame": "true_frame",
+        "frame_onset": "note",
+        "multi_instrument_frame": "true_frame",
+        "multi_instrument_note": "note"
+    }
+
     midi = MultiPostProcess(
         pred,
-        mode="note",
-        onset_th=onset_th,
+        mode=mode_mapping[minfo.label_type],
+        onset_th=minfo.onset_th,
         dura_th=minfo.dura_th,
         frm_th=minfo.frm_th,
         inst_th=minfo.inst_th,
@@ -78,7 +85,7 @@ if __name__ == "__main__":
                         type=str)
     parser.add_argument("--onset-th", help="Onset threshold (5~8)", type=float)
     args = parser.parse_args()
-    args.num_harmonics = 5
+    args.num_harmonics = HarmonicNum
     
     main(args)
     

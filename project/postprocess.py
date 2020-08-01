@@ -318,8 +318,10 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
     if mode=='note' or mode=='mpe_note':
         ch_per_inst = 2
     elif mode=='frame' or mode=='mpe_frame':
+        ch_per_inst = 2
+    elif mode == 'true_frame':
+        mode = 'frame'
         ch_per_inst = 1
-        ch_per_inst = 2 # frame-level hack
     elif mode=='offset':
         raise NotImplementedError
     else:

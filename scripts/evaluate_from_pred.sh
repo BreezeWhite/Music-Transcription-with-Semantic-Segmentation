@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Example usage
-MODEL_NAME=ICASSP-2019-Maestro-Note
-PRED_FOLDER=icassp_2019_maestro_note
+MODEL_NAME=Maestro-Note
+PRED_FOLDER=maestro_note
 TH=7
 MODE=note
 
-MODEL_NAME=ICASSP-2019-Maps-Frame
-PRED_FOLDER=icassp_2019_maps_frame
+MODEL_NAME=Maps-CFP-Frame
+PRED_FOLDER=maps_cfp_frame
 TH=0.01
 MODE=frame
 

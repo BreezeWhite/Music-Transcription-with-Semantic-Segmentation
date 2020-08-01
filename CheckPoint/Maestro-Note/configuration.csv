@@ -1,2 +1,0 @@
-Model name,Feature type,Input channels,Output classes,Timesteps
-Maestro-Attn-Note-Smooth-SingleGPU,CFP,"[1, 3]",3,128
