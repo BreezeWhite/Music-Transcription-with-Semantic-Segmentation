@@ -11,38 +11,29 @@ from project.utils import label_conversion
 
 
 class BaseLabelType:
-    def __init__(self,
-                 mode:str,
-                 timesteps=128):
+    def __init__(self, mode, timesteps=128):
         self.mode = mode
         self.timesteps = timesteps
         self.l_conv = lambda label, tid, **kwargs: label_conversion(label, tid, timesteps=timesteps, **kwargs)
 
-        if mode == "frame":
-            self.conversion_func = self.get_frame
-            self.out_classes = 2
-        elif mode == "frame_onset":
-            self.conversion_func = self.get_frame_onset
-            self.out_classes = 3
-        elif mode == "frame_onset_offset":
-            self.conversion_func = self.get_frame_onset_offset
-            self.out_classes = 4
-        elif self.customized_mode(mode):
-            pass
-        else:
-            raise ValueError("Available mode: 'frame', 'frame_onset', 'frame_onset_offset'. Provided: {}".format(mode))
+        self.mode_mapping = {
+            "frame": {"conversion_func": self.get_frame, "out_classes": 2},
+            "frame_onset": {"conversion_func": self.get_frame_onset, "out_classes": 3},
+            "frame_onset_offset": {"conversion_func": self.get_frame_onset_offset, "out_classes": 4}
+        }
+        self._update_mode()
+        if mode not in self.mode_mapping:
+            raise ValueError(f"Available mode: {self.mode_mapping.keys()}. Provided: {mode}")
     
     # Override this function if you have implemented a new mode
-    def customized_mode(self, mode)->bool:
-        self.convserion_func = None
-        self.out_classes = None
-        return False
+    def _update_mode(self):
+        pass
 
     def get_conversion_func(self):
-        return self.conversion_func
+        return self.mode_mapping[self.mode]["conversion_func"]
 
     def get_out_classes(self)->int:
-        return self.out_classes
+        return self.mode_mapping[self.mode]["out_classes"]
 
     def get_frame(self, label, tid)->np.ndarray:
         return self.l_conv(label, tid, mpe=True)
@@ -73,20 +64,12 @@ class BaseLabelType:
 
 
 class MusicNetLabelType(BaseLabelType):
-    def customized_mode(self, mode):
-        if mode == "multi_instrument_frame":
-            self.conversion_func = self.multi_inst_frm
-            self.out_classes = 12
-        elif mode == "multi_instrument_note":
-            self.conversion_func = self.multi_inst_note
-            self.out_classes = 23
-        else:
-            self.conversion_func = None
-            self.out_classes = none
-            return False
-
-        return True
-
+    def _update_mode(self):
+        self.mode_mapping.update({
+            "multi_instrument_frame": {"conversion_func": self.multi_inst_frm, "out_classes": 12},
+            "multi_instrument_note": {"conversion_func": self.multi_inst_note, "out_classes": 23}
+        })
+        
     def multi_inst_frm(self, label, tid):
         return self.l_conv(label, tid)
 

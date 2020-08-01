@@ -9,13 +9,11 @@ import mir_eval
 import numpy as np
 
 from project.configuration import MusicNetMIDIMapping, MusicNet_Instruments
-from project.utils import load_model, model_info
+from project.utils import ModelInfo
 from project.Evaluate.eval_utils import * 
 from project.Evaluate.results import EvalResults
 from project.Predict import predict, predict_v1
 from project.postprocess import MultiPostProcess, down_sample
-
-from tmp_debug import plot_onsets_info, draw
 
 
 class EvalEngine:
@@ -132,10 +130,6 @@ class EvalEngine:
             return None
 
         est_interval, est_hz = gen_onsets_info_from_notes(pred, t_unit=t_unit)
-        ### Comment me
-        #plot_onsets_info(ref_interval, ref_hz, est_interval, est_hz)
-        ###
-
         try:
             out = mir_eval.transcription.precision_recall_f1_overlap(
                 ref_interval, ref_hz, 
@@ -160,7 +154,7 @@ class EvalEngine:
                          inst_th=1.1,
                          onset_th=6, 
                          dura_th=0, 
-                         frm_th=3,
+                         frm_th=2,
                          t_unit=0.02):
         """
         Parameters:
@@ -193,9 +187,9 @@ class EvalEngine:
             print("Loading predictions")
             for key, pred in pred_f.items():
                 #### Comment me
-                #if key != "5 Mozart":
+                #if key != "2628":
                 #    continue
-                #if len(cont) >= 1:
+                #if len(cont) >= 2:
                 #    break
                 ####
                 pred = pred[:]
@@ -208,9 +202,11 @@ class EvalEngine:
             raise ValueError("Unknown parameter combination")
 
         results = cls.eval(generator, eval_func, mode=mode, inst_th=inst_th, onset_th=onset_th, dura_th=dura_th, frm_th=frm_th)
-        results.write_results("./")
         print("\n", results)
-        print("onset th: {}".format(onset_th))
+        if "note" in mode:
+            print("onset th: {}".format(onset_th))
+        elif "frame" in mode:
+            print("frame th: {}".format(frm_th))
         return results
 
     @classmethod
@@ -265,10 +261,9 @@ class EvalEngine:
         
         if not isinstance(hdf_paths, list):
             hdf_paths = [hdf_paths]
-        
-        model = load_model(model_path)
-        feature_type, channels, out_class, timesteps = model_info(model_path)
-        
+       
+        minfo = ModelInfo()
+        model = minfo.load_model(model_path)
         for hdf_path in hdf_paths:
             with h5py.File(hdf_path, "r") as feat:
                 label_path = hdf_path.replace(".hdf", ".pickle")
@@ -276,7 +271,7 @@ class EvalEngine:
                 for key, ff in feat.items():
                     ll = label[key]
                     #pred = predict(ff[:,:,channels], model, timesteps, out_class, batch_size=pred_batch_size)
-                    pred = predict_v1(ff[:,:,channels], model, timesteps, batch_size=pred_batch_size)
+                    pred = predict_v1(ff[:,:,minfo.input_channels], model, minfo.timesteps, batch_size=pred_batch_size)
 
                     yield pred, ll, key
 

@@ -6,8 +6,8 @@ from project.Dataflow.BaseDataflow import BaseDataflow
 class MaestroDataflow(BaseDataflow):
     
     structure = {
-        "train":       "train_feature",
-        "train_label": "train_feature",
+        "train":       "train_feature/harmonic",
+        "train_label": "train_feature/harmonic",
         "val":         "train_feature",
         "val_label":   "train_feature",
         "test":        "feature_test",
