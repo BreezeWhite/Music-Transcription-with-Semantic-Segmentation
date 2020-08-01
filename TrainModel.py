@@ -85,13 +85,8 @@ def main(args):
     minfo.timesteps = args.timesteps
 
     # Label type
-<<<<<<< HEAD
-    mode = "frame_onset"
-    l_type = MusicNetLabelType(mode, timesteps=timesteps)
-=======
     minfo.label_type = args.label_type
     l_type = MusicNetLabelType(args.label_type, timesteps=minfo.timesteps)
->>>>>>> add-default-conf
 
     # Number of output classes
     minfo.output_classes = l_type.get_out_classes()
@@ -134,29 +129,6 @@ def main(args):
     
     print("Creating/loading model")
     # Create model
-<<<<<<< HEAD
-    if args.input_model is not None:
-        model = load_model(args.input_model)
-    else:
-        # Create new model
-        model = seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-                    out_class=out_classes, multi_grid_layer_n=1, multi_grid_n=3)
-        #model = model_attn.seg(feature_num=384, input_channel=ch_num, timesteps=timesteps,
-        #                       out_class=out_classes)
-
-    # Save model and configurations
-    out_model_name = os.path.join(default_model_path, out_model_name)
-    if not os.path.exists(out_model_name):
-        os.makedirs(out_model_name)
-    save_model(model, out_model_name, **hparams)
-
-    # Weighted loss
-    weight = None # Frame mode
-    if weight is not None:
-        assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
-    #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
-    loss_func = lambda label,pred: mctl_loss(label, pred, out_classes=out_classes, weight=weight)
-=======
     if args.input_model is None:
         model = minfo.create_model(model_type="attn")
 
@@ -180,7 +152,6 @@ def main(args):
     # Save model and configurations
     print(minfo)
     minfo.save_model(model, default_model_path)
->>>>>>> add-default-conf
     
     # Use multi-gpu to train the model
     if False:
