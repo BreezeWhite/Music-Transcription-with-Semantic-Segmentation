@@ -71,12 +71,14 @@ class EvalResults:
                     writer.writerow(row)
                 offset = v
 
-    def __str__(self):
+    def get_avg(self):
         overall_avg = self.get_each_avg()
-        f1 = []
         avg = overall_avg["Avg"]
+        return avg["precision"], avg["recall"], avg["fscore"], avg["inst_acc"], avg["overlap"]
+
+    def __str__(self):
         score_str = "Prec: {:.4f}, Rec: {:.4f} F-score: {:.4f} Inst Acc: {:.4f} Overlap: {:.4f}".format(
-            avg['precision'], avg['recall'], avg['fscore'], avg['inst_acc'], avg['overlap']
+            *self.get_avg()
         )
 
         return score_str

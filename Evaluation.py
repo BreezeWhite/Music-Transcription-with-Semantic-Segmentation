@@ -5,8 +5,9 @@ from project.Evaluate.Evaluation import EvalEngine
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 
+
 def main(args):
-    EvalEngine.evaluate_dataset(
+    results = EvalEngine.evaluate_dataset(
         args.mode, 
         feature_path=args.feature_path,
         model_path=args.model_path,
@@ -15,6 +16,12 @@ def main(args):
         label_path=args.label_path,
         onset_th=args.onset_th
     )
+    
+    if not os.path.exists("./result"):
+        os.makedirs("./result")
+    prefix = args.pred_path.split("/")[-2]
+    results.write_results(f"./result/{prefix}_results.csv")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Evaluate one the dataset")

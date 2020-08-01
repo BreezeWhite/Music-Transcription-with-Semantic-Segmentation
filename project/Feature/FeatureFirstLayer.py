@@ -172,7 +172,7 @@ def parallel_extract(x, samples, MaxSample, fr, fs, Hop, h, fc, tc, g, NumPerOct
 def feature_extraction(
         filename,
         hop=0.02, # in seconds
-        w=7939,
+        w=5645,
         fr=2.0,
         fc=27.5,
         tc=1/4487.0,

@@ -1,19 +1,20 @@
 import sys
 sys.path.append("./")
+import math
 
 import h5py
-import math
 import pretty_midi
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 from scipy.interpolate import CubicSpline
 from scipy.signal import find_peaks
 from librosa import note_to_midi
+
 from project.configuration import MusicNet_Instruments, MusicNetMIDIMapping
 from project.Evaluate.eval_utils import roll_down_sample, find_occur
+
 
 def plot3(pred):
     fig, axes = plt.subplots(nrows=2)
@@ -250,6 +251,7 @@ def PostProcess(pred,
         else:
             norm_pred = norm_onset_dura(pred, onset_th=onset_th, dura_th=dura_th, interpolate=True)
 
+        norm_pred = np.where(norm_pred>0, norm_pred+1, 0)
         notes = infer_piece(down_sample(norm_pred), t_unit=0.01)
         midi = to_midi(notes, t_unit=t_unit/2)
     
@@ -316,12 +318,15 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
     if mode=='note' or mode=='mpe_note':
         ch_per_inst = 2
     elif mode=='frame' or mode=='mpe_frame':
-        ch_per_inst = 2 
+        ch_per_inst = 2
+    elif mode == 'true_frame':
+        mode = 'frame'
+        ch_per_inst = 1
     elif mode=='offset':
         raise NotImplementedError
     else:
         raise ValueError
-    assert((pred.shape[-1]-1)%ch_per_inst == 0)
+    assert((pred.shape[-1]-1)%ch_per_inst == 0), f"Input shape: {pred.shape}"
     
     ch_container = []
     iters = (pred.shape[-1]-1)//ch_per_inst
@@ -339,7 +344,7 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
         chs = ch_container[0].shape[-1]
         for i in range(ch_per_inst):
             pp = ch_container[i]
-            pp[:,:,0] = np.sum(pp, axis=2)
+            pp[:,:,0] = np.average(pp, axis=2)
             ch_container[i] = pp
 
     onset_th = threshold_type_converter(onset_th, iters)
@@ -359,7 +364,6 @@ def MultiPostProcess(pred, mode='note', onset_th=5, dura_th=2, frm_th=1, inst_th
             std += np.std(ch)
             ent += entropy(ch)
             normed_ch.append(ch)
-
         print("std: {:.3f} ent: {:.3f} mult: {:.3f}".format(std/ch_per_inst, ent/ch_per_inst, std*ent/ch_per_inst**2))
         if iters>1 and (std/ch_per_inst < inst_th):
             continue

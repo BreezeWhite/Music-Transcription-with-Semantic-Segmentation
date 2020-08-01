@@ -1,18 +1,19 @@
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+import json
 
 import argparse
-
-from project.LabelType import BaseLabelType
-from project.utils import load_model, save_model, model_info
-from project.configuration import HarmonicNum
-from project.Models.model import seg, sparse_loss
-from project.Dataflow import DataFlows
-
+import tensorflow as tf
 from keras import callbacks
 from keras.utils import multi_gpu_model
-import tensorflow as tf
+
+from project.LabelType import MusicNetLabelType
+from project.utils import ModelInfo
+from project.configuration import HarmonicNum
+from project.Models.model import sparse_loss, mctl_loss
+from project.Dataflow import DataFlows
+
 
 dataset_paths = {
     "Maestro":  "/data/Maestro",
@@ -33,7 +34,7 @@ def train(
         model, 
         generator_train, 
         generator_val,
-        epoch=1,
+        epochs=1,
         callbacks=None, 
         steps=6000, 
         v_steps=3000
@@ -42,7 +43,7 @@ def train(
     model.fit_generator(
         generator_train, 
         validation_data=generator_val,
-        epochs=epoch,
+        epochs=epochs,
         steps_per_epoch=steps,
         validation_steps=v_steps,
         callbacks=callbacks,
@@ -61,6 +62,9 @@ def main(args):
 
     # Parameters that will be passed to dataflow
     df_params = {}
+
+    # Information about the model (load/store/create)
+    minfo = ModelInfo()
     
     # Handling root path to the dataset
     d_path = dataset_paths[args.dataset]
@@ -69,44 +73,48 @@ def main(args):
         d_path = args.dataset_path
     
     # Number of channels that model need to know about
-    ch_num = len(args.channels)
-    channels = args.channels
+    minfo.input_channels = args.channels
     
     # Type of feature to use
-    feature_type = "CFP"
+    minfo.feature_type = "CFP"
     
     # Output model name
-    out_model_name = args.output_model_name
+    minfo.name = args.output_model_name
     
     # Feature length on time dimension
-    timesteps = args.timesteps
+    minfo.timesteps = args.timesteps
 
     # Label type
+<<<<<<< HEAD
     mode = "frame_onset"
     l_type = MusicNetLabelType(mode, timesteps=timesteps)
+=======
+    minfo.label_type = args.label_type
+    l_type = MusicNetLabelType(args.label_type, timesteps=minfo.timesteps)
+>>>>>>> add-default-conf
 
     # Number of output classes
-    out_classes = l_type.get_out_classes()
+    minfo.output_classes = l_type.get_out_classes()
 
-    # Continue to train on a pre-trained model
+    # Continue to fine-tune on a pre-trained model
     if args.input_model is not None:
-        # load configuration of previous training
-        feature_type, channels, out_classes, timesteps = model_info(args.input_model)
-        ch_num = len(channels)
-    else:
-        if args.dataset == "MusicNet":
-            # Sepcial settings for MusicNet that has multiple instruments presented
-            if args.use_harmonic:
-                ch_num = HarmonicNum * 2
-                channels = [i for i in range(ch_num)]
-                feature_type = "HCFP"
+        # load configuration from previous training stage
+        model = minfo.load_model(args.input_model)
 
+    # Check whether to use harmonic feature
+    if args.use_harmonic:
+        tmp_ch = []
+        for ch in minfo.input_channels:
+            tmp_ch += list(range((ch-1)*HarmonicNum, ch*HarmonicNum))
+        minfo.input_channels = tmp_ch
+        minfo.feature_type = "HCFP"
+    
     df_params["b_sz"]      = args.train_batch_size
     df_params["phase"]     = "train"
     df_params["use_ram"]   = args.use_ram
-    df_params["channels"]  = channels
-    df_params["timesteps"] = timesteps
-    df_params["out_classes"]  = out_classes
+    df_params["channels"]  = minfo.input_channels
+    df_params["timesteps"] = minfo.timesteps
+    df_params["out_classes"]  = minfo.output_classes
     df_params["dataset_path"] = d_path
     df_params["label_conversion_func"] = l_type.get_conversion_func()
 
@@ -119,13 +127,14 @@ def main(args):
     df_params["phase"] = "val"
     val_df = df_cls(**df_params)
 
-    hparams["channels"]       = channels
-    hparams["timesteps"]      = timesteps
-    hparams["feature_type"]   = feature_type
-    hparams["output_classes"] = out_classes
+    hparams["channels"]       = minfo.input_channels
+    hparams["timesteps"]      = minfo.timesteps
+    hparams["feature_type"]   = minfo.feature_type
+    hparams["output_classes"] = minfo.output_classes
     
     print("Creating/loading model")
     # Create model
+<<<<<<< HEAD
     if args.input_model is not None:
         model = load_model(args.input_model)
     else:
@@ -147,6 +156,31 @@ def main(args):
         assert(len(weight)==out_classes),"Weight length: {}, out classes: {}".format(len(weight), out_classes)
     #loss_func = lambda label,pred: sparse_loss(label, pred, weight=weight)
     loss_func = lambda label,pred: mctl_loss(label, pred, out_classes=out_classes, weight=weight)
+=======
+    if args.input_model is None:
+        model = minfo.create_model(model_type="attn")
+
+    # Loss function
+    loss_func_mapping = {
+        "focal": sparse_loss,
+        "smooth": lambda label, pred: mctl_loss(label, pred, out_classes=minfo.output_classes),
+        "bce": tf.keras.losses.BinaryCrossentropy
+    }
+    loss_func = loss_func_mapping[args.loss_function]
+
+    # Store other training information
+    minfo.dataset = args.dataset
+    minfo.epochs = args.epochs
+    minfo.steps = args.steps
+    minfo.loss_function = args.loss_function
+    minfo.train_batch_size = args.train_batch_size
+    minfo.val_batch_size = args.val_batch_size
+    minfo.early_stop = args.early_stop
+
+    # Save model and configurations
+    print(minfo)
+    minfo.save_model(model, default_model_path)
+>>>>>>> add-default-conf
     
     # Use multi-gpu to train the model
     if False:
@@ -158,7 +192,7 @@ def main(args):
 
     # create callbacks
     earlystop   = callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
-    checkpoint  = callbacks.ModelCheckpoint(os.path.join(out_model_name, "weights.h5"), 
+    checkpoint  = callbacks.ModelCheckpoint(os.path.join(default_model_path, minfo.name, "weights.h5"), 
                                             monitor="val_loss", save_best_only=False, save_weights_only=True)
     tensorboard = callbacks.TensorBoard(log_dir=os.path.join("tensorboard", args.output_model_name),
                                         write_images=True)
@@ -167,13 +201,16 @@ def main(args):
     print("Start training")
     # Start training
     train(model, train_df, val_df,
-          epoch     = args.epoch,
+          epochs    = args.epochs,
           callbacks = callback_list,
           steps     = args.steps,
           v_steps   = args.val_steps)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Frame-level polyphonic music transcription project done by MCTLab, IIS Sinica.")
+    parser = argparse.ArgumentParser(
+        "Polyphonic music transcription project done by MCTLab, IIS Sinica.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     
     parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps", choices=["Maestro", "MusicNet", "Maps"],
                         type=str)
@@ -183,31 +220,34 @@ if __name__ == "__main__":
                         type=str)
     parser.add_argument("--use-harmonic", help="Wether to use HCFP feature to train the model",
                         action="store_true")
-    parser.add_argument("--multi-instruments", help="Train on transcribing the note played with different instruments",
-                        action="store_true")
+    parser.add_argument("--label-type", help="Type of label to be transformed to",
+                        type=str, choices=["frame", "frame_onset", "multi_instrument_frame", "multi_instrument_note"], 
+                        default="frame_onset")
+    parser.add_argument("--loss-function", help="Use specific type of loss functions.",
+                         type=str, default="smooth", choices=["focal", "smooth", "bce"])
     # Channel types
     #   0: Z
     #   1: Spec
     #   2: GCoS
     #   3: Ceps
-    parser.add_argument("-c", "--channels", help="Use specific channels of feature to train (default: %(default)d)",
+    parser.add_argument("-c", "--channels", help="Use specific channels of feature to train ",
                         type=int, nargs="+", default=[1, 3]) 
     parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
                         action="store_true")
-    parser.add_argument("-t", "--timesteps", help="Time width for each input feature (default: %(default)d)",
+    parser.add_argument("-t", "--timesteps", help="Time width for each input feature",
                         type=int, default=256)
     
     # Arguments about the training progress
-    parser.add_argument("-e", "--epoch", help="Number of epochs to train (default: %(default)d)",
+    parser.add_argument("-e", "--epochs", help="Number of epochs to train",
                         type=int, default=10)
-    parser.add_argument("-s", "--steps", help="Training steps for each epoch (default: %(default)d)",
+    parser.add_argument("-s", "--steps", help="Training steps for each epoch",
                         type=int, default=2000)
-    parser.add_argument("-vs", "--val-steps", help="Validation steps (default: %(default)d)",
+    parser.add_argument("-vs", "--val-steps", help="Validation steps",
                         type=int, default=500)
     parser.add_argument("-i", "--input-model", help="If given, then will continue to train on a pre-trained model")
-    parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase (default: %(default)d)",
+    parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase",
                         type=int, default=8)
-    parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase (default: %(default)d)",
+    parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase",
                         type=int, default=16)
     parser.add_argument("--early-stop", help="Early stop the training after given # epochs",
                         type=int, default=4)

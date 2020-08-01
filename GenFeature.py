@@ -1,37 +1,44 @@
 import os
 import argparse
 
+import project.Feature.FeatureProcessor as fp
+import project.configuration as conf
 from project.configuration import MapsDatasetInfo, MusicNetDatasetInfo, MaestroDatasetInfo, SuDatasetInfo, Bach10DatasetInfo, URMPDatasetInfo
-from project.Feature.MapsFeatureExtraction import MapsFeatExt
-from project.Feature.MaestroFeatureExtraction import MaestroFeatExt
-from project.Feature.MusicNetFeatureExtraction import MusicNetFeatExt
-from project.Feature.SuFeatureExtraction import SuFeatExt
+from project.configuration import Su10DatasetInfo, RhythmDatasetInfo
 
 
 d_conf = {
     "Maps": {
-        "dataset_info": MapsDatasetInfo,
-        "processor": MapsFeatExt
+        "dataset_info": conf.MapsDatasetInfo,
+        "processor": fp.MapsFeatExt
     },
     "Maestro": {
-        "dataset_info": MaestroDatasetInfo,
-        "processor": MaestroFeatExt
+        "dataset_info": conf.MaestroDatasetInfo,
+        "processor": fp.MaestroFeatExt
     },
     "MusicNet": {
-        "dataset_info": MusicNetDatasetInfo,
-        "processor": MusicNetFeatExt
+        "dataset_info": conf.MusicNetDatasetInfo,
+        "processor": fp.MusicNetFeatExt
     },
     "Su": {
-        "dataset_info": SuDatasetInfo,
-        "processor": SuFeatExt
+        "dataset_info": conf.SuDatasetInfo,
+        "processor": fp.SuFeatExt
+    },
+    "Su-10": {
+        "dataset_info": conf.Su10DatasetInfo,
+        "processor": fp.SuFeatExt
     },
     "URMP": {
-        "dataset_info": URMPDatasetInfo,
-        "processor": SuFeatExt
+        "dataset_info": conf.URMPDatasetInfo,
+        "processor": fp.SuFeatExt
     },
     "Bach": {
-        "dataset_info": Bach10DatasetInfo,
-        "processor": SuFeatExt
+        "dataset_info": conf.Bach10DatasetInfo,
+        "processor": fp.SuFeatExt
+    },
+    "Rhythm": {
+        "dataset_info": conf.RhythmDatasetInfo,
+        "processor": fp.RhythmFeatExt
     }
 }
 
@@ -59,7 +66,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Feature Processor")
     parser.add_argument("dataset", help="One of Maps, MusicNet, or Maestro", 
-                        type=str, choices=["Maps", "MusicNet", "Maestro", "Su", "URMP", "Bach"])
+                        type=str, choices=["Maps", "MusicNet", "Maestro", "Su", "Su-10", "URMP", "Bach", "Rhythm"])
     parser.add_argument("dataset_path", help="Path to the downloaded dataset",
                         type=str)
     parser.add_argument("-p", "--phase", help="Generate training feature or testing feature. Default: %(default)s",
@@ -73,3 +80,4 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     main(args)
+

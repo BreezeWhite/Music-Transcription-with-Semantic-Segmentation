@@ -29,17 +29,25 @@ def process_feature_song_list(
         piece = np.transpose(np.array(out[0:4]), axes=(2, 1, 0))
         
         if harmonic:
+            # Harmonic spectrum
             har = []
             for i in range(num_harmonic+1):
                 har.append(fetch_harmonic(out[1], cenf, i))
             har_s = np.transpose(np.array(har), axes=(2, 1, 0))
             
+            # Harmonic GCoS
+            har = []
+            for i in range(num_harmonic+1):
+                har.append(fetch_harmonic(out[2], cenf, i))
+            har_g = np.transpose(np.array(har), axes=(2, 1, 0))
+
+            # Harmonic cepstrum
             har = []
             for i in range(num_harmonic+1):
                 har.append(fetch_harmonic(out[3], cenf, i, is_reverse=True))
             har_c = np.transpose(np.array(har), axes=(2, 1, 0))
             
-            piece = np.dstack((har_s, har_c))
+            piece = np.dstack((har_s, har_g, har_c))
         
         key = os.path.basename(song)
         key = key.replace(".wav", "")

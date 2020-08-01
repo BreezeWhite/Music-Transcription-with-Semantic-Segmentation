@@ -6,7 +6,6 @@ from keras.layers.convolutional import Conv1D, MaxPooling1D, UpSampling2D, UpSam
 
 from keras.optimizers import SGD, Adam
 from keras import regularizers
-from project.utils import load_model, model_copy
 
 import tensorflow as tf
 from tensorflow.python.ops import array_ops
@@ -57,7 +56,7 @@ def q_func(y_true, gamma=0.1, total_chs=22):
     return (1-gamma)*y_true + gamma/total_chs
     #return (1-gamma)*y_true + (1-y_true)*gamma/total_chs
 
-def smooth_loss(y_true, y_pred, gamma=0.1, total_chs=22, weight=None):
+def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.2, total_chs=22, weight=None):
     clip_value = lambda v_in: tf.clip_by_value(v_in, 1e-8, 1.0)
     target = clip_value(q_func(y_true, gamma=gamma, total_chs=total_chs))
     neg_target = clip_value(q_func(1-y_true, gamma=gamma, total_chs=total_chs))
@@ -65,15 +64,22 @@ def smooth_loss(y_true, y_pred, gamma=0.1, total_chs=22, weight=None):
     neg_sigmoid_p = clip_value(tf.nn.sigmoid(1-y_pred))
 
     cross_entropy = -target*tf.log(sigmoid_p) - neg_target*tf.log(neg_sigmoid_p)
+    
+    # Focal loss
+    """
+    zeros = array_ops.zeros_like(sigmoid_p, dtype=sigmoid_p.dtype)
+    pos_p_sub = array_ops.where(target>=sigmoid_p, target-sigmoid_p, zeros)
+    neg_p_sub = array_ops.where(neg_target>=neg_sigmoid_p, neg_target-neg_sigmoid_p, zeros)
+    focal_cross_entropy = -alpha * (pos_p_sub**beta) * tf.log(sigmoid_p) \
+                          -(1-alpha) * (neg_p_sub**beta) * tf.log(neg_sigmoid_p)
+    """
     return tf.reduce_mean(cross_entropy)
 
 def mctl_loss(y_true, y_pred, out_classes=3, weight=None):
     "Abbreviate from 'Mixed Cross enTropy and L1' loss"
-    cross_loss = smooth_loss(y_true, y_pred,total_chs=out_classes,  weight=weight)
-    #l1_loss = distance_loss(y_true, y_pred, exp=1)
-    #l_inf_loss = distance_loss(y_true, y_pred, exp=-1)
-
-    total_loss = cross_loss# + 0.1*l1_loss
+    cross_loss = smooth_loss(y_true, y_pred, weight=weight)
+    l1_loss = distance_loss(y_true, y_pred, exp=1)
+    total_loss = cross_loss # + 0.1*l1_loss
     return total_loss
 
 def conv_block(input_tensor,
@@ -143,13 +149,13 @@ def seg(feature_num=128,
         timesteps=256,
         multi_grid_layer_n=1,
         multi_grid_n=3,
-        input_channel=1,
+        ch_num=1,
         prog = False,
         out_class=2
         ):
     layer_out = []
 
-    input_score = Input(shape=(timesteps, feature_num, input_channel), name="input_score_48")
+    input_score = Input(shape=(timesteps, feature_num, ch_num), name="input_score_48")
     en = Conv2D(2 ** 5, (7, 7), strides=(1, 1), padding="same")(input_score)
     layer_out.append(en)
 

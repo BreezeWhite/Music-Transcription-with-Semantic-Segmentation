@@ -132,12 +132,19 @@ class URMPDatasetInfo(BaseDatasetInfo):
 
 
 class RhythmDatasetInfo(BaseDatasetInfo):
-    base_path="/data/ade/sma_rhythm"
+    base_path="/data/ade/sma_rhythm/76_pop_rhythm"
     label_ext=".mid"
     train_wavs=[]
-    test_wavs=["wavs"]
+    test_wavs=[
+        "01_ytd_audio/dist0p00",
+        "01_ytd_audio/dist0p10"
+    ]
     train_labels=train_wavs
-    test_labels=["midi"]
+    test_labels=[
+        "05_align_mid/dist0p00",
+        "05_align_mid/dist0p10"
+    ]
+
 
 class Bach10DatasetInfo(BaseDatasetInfo):
     base_path="/data/ade/bach10"
