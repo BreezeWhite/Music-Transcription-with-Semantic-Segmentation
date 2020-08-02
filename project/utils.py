@@ -257,6 +257,8 @@ class ModelInfo:
         return self._construct_description()
 
     def __str__(self):
+        if self.description is None:
+            self.description = self._construct_description()
         return self.description
 
     @property
