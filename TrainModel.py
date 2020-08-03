@@ -136,7 +136,7 @@ def main(args):
     loss_func_mapping = {
         "focal": sparse_loss,
         "smooth": lambda label, pred: mctl_loss(label, pred, out_classes=minfo.output_classes),
-        "bce": tf.keras.losses.BinaryCrossentropy
+        "bce": tf.keras.losses.BinaryCrossentropy()
     }
     loss_func = loss_func_mapping[args.loss_function]
 

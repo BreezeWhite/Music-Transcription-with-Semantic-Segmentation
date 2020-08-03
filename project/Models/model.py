@@ -56,7 +56,8 @@ def q_func(y_true, gamma=0.1, total_chs=22):
     return (1-gamma)*y_true + gamma/total_chs
     #return (1-gamma)*y_true + (1-y_true)*gamma/total_chs
 
-def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.2, total_chs=22, weight=None):
+def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.1, total_chs=22, weight=None):
+    total_chs = min(25, max(total_chs, 5))
     clip_value = lambda v_in: tf.clip_by_value(v_in, 1e-8, 1.0)
     target = clip_value(q_func(y_true, gamma=gamma, total_chs=total_chs))
     neg_target = clip_value(q_func(1-y_true, gamma=gamma, total_chs=total_chs))
@@ -77,7 +78,7 @@ def smooth_loss(y_true, y_pred, alpha=0.25, beta=2, gamma=0.2, total_chs=22, wei
 
 def mctl_loss(y_true, y_pred, out_classes=3, weight=None):
     "Abbreviate from 'Mixed Cross enTropy and L1' loss"
-    cross_loss = smooth_loss(y_true, y_pred, weight=weight)
+    cross_loss = smooth_loss(y_true, y_pred, total_chs=out_classes, weight=weight)
     l1_loss = distance_loss(y_true, y_pred, exp=1)
     total_loss = cross_loss # + 0.1*l1_loss
     return total_loss
