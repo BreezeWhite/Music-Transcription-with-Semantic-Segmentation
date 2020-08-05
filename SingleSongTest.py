@@ -13,9 +13,29 @@ from project.utils import ModelInfo
 from project.configuration import MusicNet_Instruments, HarmonicNum
 
 
-def main(args):
+def create_parser():
+    parser = argparse.ArgumentParser(description="Transcribe on the given audio.")
+    parser.add_argument("-i", "--input-audio",
+                        help="Path to the input audio you want to transcribe",
+                        type=str)
+    parser.add_argument("-m", "--model-path", 
+                        help="Path to the pre-trained model.",
+                        type=str)
+    parser.add_argument("-o", "--output-fig-name",
+                        help="Name of transcribed figure of piano roll to save.",
+                        type=str, default="Piano Roll")
+    parser.add_argument("--to-midi", help="Also output the transcription result to midi file.",
+                        type=str)
+    parser.add_argument("--onset-th", help="Onset threshold (5~8)", type=float)
+    return parser
+
+
+def main():
+    parser = create_parser()
+    args = parser.parse_args()
+
     # Pre-process features
-    assert(os.path.isfile(args.input_audio)), f"The given path is not a file!. Please check your input again. Given input: {audio.input_audio}"
+    assert(os.path.isfile(args.input_audio)), f"The given path is not a file!. Please check your input again. Given input: {args.input_audio}"
     print("Processing features of input audio: {}".format(args.input_audio))
     Z, tfrL0, tfrLF, tfrLQ, t, cenf, f = feature_extraction(args.input_audio)
     
@@ -27,11 +47,11 @@ def main(args):
 
     # Post-process feature according to the configuration of model
     if minfo.feature_type == "HCFP":
-        assert(len(minfo.input_channels) == (args.num_harmonics*2+2))
+        assert(len(minfo.input_channels) == (HarmonicNum*2+2))
         
         spec = []
         ceps = []
-        for i in range(args.num_harmonics+1):
+        for i in range(HarmonicNum+1):
             spec.append(fetch_harmonic(tfrL0, cenf, i))
             ceps.append(fetch_harmonic(tfrLQ, cenf, i))
         
@@ -69,23 +89,7 @@ def main(args):
         midi.write(args.to_midi)
         print("Midi written as {}".format(args.to_midi))
 
+
 if __name__ == "__main__":
-    
-    parser = argparse.ArgumentParser(description="Transcribe on the given audio.")
-    parser.add_argument("-i", "--input-audio",
-                        help="Path to the input audio you want to transcribe",
-                        type=str)
-    parser.add_argument("-m", "--model-path", 
-                        help="Path to the pre-trained model.",
-                        type=str)
-    parser.add_argument("-o", "--output-fig-name",
-                        help="Name of transcribed figure of piano roll to save.",
-                        type=str, default="Piano Roll")
-    parser.add_argument("--to-midi", help="Also output the transcription result to midi file.",
-                        type=str)
-    parser.add_argument("--onset-th", help="Onset threshold (5~8)", type=float)
-    args = parser.parse_args()
-    args.num_harmonics = HarmonicNum
-    
-    main(args)
+    main()
     

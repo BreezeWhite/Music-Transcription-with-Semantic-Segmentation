@@ -30,6 +30,54 @@ dataflow_cls = {
 default_model_path = "./model"
 
 
+def create_parser():
+    parser = argparse.ArgumentParser(
+        "Polyphonic music transcription project done by MCTLab, IIS Sinica.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps", choices=["Maestro", "MusicNet", "Maps"],
+                        type=str)
+    parser.add_argument("output_model_name", help="Name for trained model. If --input-model is given, \
+                        then this flag has no effect.", type=str)
+    parser.add_argument("-d", "--dataset-path", help="Path to the root of the dataset that has preprocessed feature",
+                        type=str)
+    parser.add_argument("--use-harmonic", help="Wether to use HCFP feature to train the model",
+                        action="store_true")
+    parser.add_argument("--label-type", help="Type of label to be transformed to",
+                        type=str, choices=["frame", "frame_onset", "multi_instrument_frame", "multi_instrument_note"], 
+                        default="frame_onset")
+    parser.add_argument("--loss-function", help="Use specific type of loss functions.",
+                         type=str, default="smooth", choices=["focal", "smooth", "bce"])
+    # Channel types
+    #   0: Z
+    #   1: Spec
+    #   2: GCoS
+    #   3: Ceps
+    parser.add_argument("-c", "--channels", help="Use specific channels of feature to train ",
+                        type=int, nargs="+", default=[1, 3]) 
+    parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
+                        action="store_true")
+    parser.add_argument("-t", "--timesteps", help="Time width for each input feature",
+                        type=int, default=256)
+    
+    # Arguments about the training progress
+    parser.add_argument("-e", "--epochs", help="Number of epochs to train",
+                        type=int, default=10)
+    parser.add_argument("-s", "--steps", help="Training steps for each epoch",
+                        type=int, default=2000)
+    parser.add_argument("-vs", "--val-steps", help="Validation steps",
+                        type=int, default=500)
+    parser.add_argument("-i", "--input-model", help="If given, then will continue to train on a pre-trained model")
+    parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase",
+                        type=int, default=8)
+    parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase",
+                        type=int, default=16)
+    parser.add_argument("--early-stop", help="Early stop the training after given # epochs",
+                        type=int, default=4)
+    return parser
+
+
 def train(
         model, 
         generator_train, 
@@ -53,7 +101,12 @@ def train(
 
     return model
 
-def main(args):
+
+def main():
+    parser = create_parser()
+    args = parser.parse_args()
+    print(args)
+
     if args.dataset not in dataflow_cls:
         raise TypeError
     
@@ -177,55 +230,9 @@ def main(args):
           steps     = args.steps,
           v_steps   = args.val_steps)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        "Polyphonic music transcription project done by MCTLab, IIS Sinica.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    
-    parser.add_argument("dataset", help="One of the Maestro, MusicNet, or Maps", choices=["Maestro", "MusicNet", "Maps"],
-                        type=str)
-    parser.add_argument("output_model_name", help="Name for trained model. If --input-model is given, \
-                        then this flag has no effect.", type=str)
-    parser.add_argument("-d", "--dataset-path", help="Path to the root of the dataset that has preprocessed feature",
-                        type=str)
-    parser.add_argument("--use-harmonic", help="Wether to use HCFP feature to train the model",
-                        action="store_true")
-    parser.add_argument("--label-type", help="Type of label to be transformed to",
-                        type=str, choices=["frame", "frame_onset", "multi_instrument_frame", "multi_instrument_note"], 
-                        default="frame_onset")
-    parser.add_argument("--loss-function", help="Use specific type of loss functions.",
-                         type=str, default="smooth", choices=["focal", "smooth", "bce"])
-    # Channel types
-    #   0: Z
-    #   1: Spec
-    #   2: GCoS
-    #   3: Ceps
-    parser.add_argument("-c", "--channels", help="Use specific channels of feature to train ",
-                        type=int, nargs="+", default=[1, 3]) 
-    parser.add_argument("--use-ram", help="Wether to load the whole dataset into ram",
-                        action="store_true")
-    parser.add_argument("-t", "--timesteps", help="Time width for each input feature",
-                        type=int, default=256)
-    
-    # Arguments about the training progress
-    parser.add_argument("-e", "--epochs", help="Number of epochs to train",
-                        type=int, default=10)
-    parser.add_argument("-s", "--steps", help="Training steps for each epoch",
-                        type=int, default=2000)
-    parser.add_argument("-vs", "--val-steps", help="Validation steps",
-                        type=int, default=500)
-    parser.add_argument("-i", "--input-model", help="If given, then will continue to train on a pre-trained model")
-    parser.add_argument("-b", "--train-batch-size", help="Batch size for training phase",
-                        type=int, default=8)
-    parser.add_argument("-vb", "--val-batch-size", help="Batch size for validation phase",
-                        type=int, default=16)
-    parser.add_argument("--early-stop", help="Early stop the training after given # epochs",
-                        type=int, default=4)
 
-    args = parser.parse_args()
-    print(args)
-    main(args)
+if __name__ == "__main__":
+    main()
 
 
 

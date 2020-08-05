@@ -42,7 +42,28 @@ d_conf = {
     }
 }
 
-def main(args):
+
+def create_parser():
+    parser = argparse.ArgumentParser("Feature Processor")
+    parser.add_argument("dataset", help="One of Maps, MusicNet, or Maestro", 
+                        type=str, choices=["Maps", "MusicNet", "Maestro", "Su", "Su-10", "URMP", "Bach", "Rhythm"])
+    parser.add_argument("dataset_path", help="Path to the downloaded dataset",
+                        type=str)
+    parser.add_argument("-p", "--phase", help="Generate training feature or testing feature. Default: %(default)s",
+                        type=str, default="train", choices=["train", "test"])
+    parser.add_argument("-n", "--piece-per-file", help="Number of pieces should be included in one generated file",
+                        type=int, default=40)
+    parser.add_argument("-s", "--save-path", help="Path to save the generated feature and label files", 
+                        type=str, default="./train_feature")
+    parser.add_argument("-a", "--harmonic", help="Generate harmonic features",
+                        action="store_true")
+    return parser
+
+
+def main():
+    parser = create_parser()
+    args = parser.parse_args()
+
     dinfo = d_conf[args.dataset]["dataset_info"](args.dataset_path)
     proc_cls = d_conf[args.dataset]["processor"]
 
@@ -64,20 +85,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Feature Processor")
-    parser.add_argument("dataset", help="One of Maps, MusicNet, or Maestro", 
-                        type=str, choices=["Maps", "MusicNet", "Maestro", "Su", "Su-10", "URMP", "Bach", "Rhythm"])
-    parser.add_argument("dataset_path", help="Path to the downloaded dataset",
-                        type=str)
-    parser.add_argument("-p", "--phase", help="Generate training feature or testing feature. Default: %(default)s",
-                        type=str, default="train", choices=["train", "test"])
-    parser.add_argument("-n", "--piece-per-file", help="Number of pieces should be included in one generated file",
-                        type=int, default=40)
-    parser.add_argument("-s", "--save-path", help="Path to save the generated feature and label files", 
-                        type=str, default="./train_feature")
-    parser.add_argument("-a", "--harmonic", help="Generate harmonic features",
-                        action="store_true")
-    
-    args = parser.parse_args()
-    main(args)
+    main()
 
