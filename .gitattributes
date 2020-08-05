@@ -5,3 +5,8 @@ CheckPoint/MusicNet_CFP_MPE/weights.h5 filter=lfs diff=lfs merge=lfs -text
 CheckPoint/MusicNet_HCFP_MPE/weights.h5 filter=lfs diff=lfs merge=lfs -text
 CheckPoint/MusicNet_HCFP_Multi/weights.h5 filter=lfs diff=lfs merge=lfs -text
 CheckPoint/Maestro-Note/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/Maps-CFP-Frame/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet-CFP-Frame-SingleInst/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet-CFP-Note-MultiInst/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet-HCFP-Frame-MultiInst/weights.h5 filter=lfs diff=lfs merge=lfs -text
+CheckPoint/MusicNet-HCFP-Frame-SingleInst/weights.h5 filter=lfs diff=lfs merge=lfs -text
