@@ -153,6 +153,29 @@ def gather_blocks_2d(x, indices):
   return tf.transpose(x_new, [2, 3, 0, 1, 4])
 
 
+def combine_last_two_dimensions(x):
+  """Reshape x so that the last two dimension become one.
+  Args:
+    x: a Tensor with shape [..., a, b]
+  Returns:
+    a Tensor with shape [..., ab]
+  """
+  x_shape = shape_list(x)
+  a, b = x_shape[-2:]
+  return tf.reshape(x, x_shape[:-2] + [a * b])
+
+
+def combine_heads_2d(x):
+  """Inverse of split_heads_2d.
+  Args:
+    x: a Tensor with shape
+      [batch, num_heads, height, width, channels / num_heads]
+  Returns:
+    a Tensor with shape [batch, height, width, channels]
+  """
+  return combine_last_two_dimensions(tf.transpose(x, [0, 2, 3, 1, 4]))
+
+
 def embedding_to_padding(emb):
   """Calculates the padding mask based on which embeddings are all zero.
   We have hacked symbol_modality to return all-zero embeddings for padding.
