@@ -1,7 +1,9 @@
+import sys
+sys.path.append("./")
+
 from keras.engine import Input, Model
-from keras.layers import add, concatenate, Dropout, Lambda, Activation
+from keras.layers import add, concatenate, Conv2D, Conv2DTranspose, Dropout, Lambda, Activation
 from keras.layers.normalization import BatchNormalization
-from keras.layers.convolutional import Conv2D, Conv2DTranspose
 import tensorflow as tf
 
 from project.Models.t2t import local_attention_2d, split_heads_2d, combine_heads_2d
@@ -78,8 +80,27 @@ def multihead_attention(x, out_channel=64, d_model=32, n_heads=8, query_shape=(1
     output = Conv2D(out_channel, (3, 3), strides=(1, 1), padding="same", use_bias=False)(output)
     return output
 
-def MultiHead_Attention(x, **kwargs):
-    return Lambda(lambda a: multihead_attention(a, **kwargs))(x)
+
+class MultiHeadAttention(tf.keras.layers.Layer):
+    def __init__(self, out_channel=64, d_model=32, n_heads=8, query_shape=(128, 24), memory_flange=(8, 8), **kwargs):
+        super(MultiHeadAttention, self).__init__(**kwargs)
+
+        self.out_channel = out_channel
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.query_shape = query_shape
+        self.memory_flange = memory_flange
+
+    def call(self, inputs):
+        return multihead_attention(
+            inputs,
+            out_channel=self.out_channel,
+            d_model=self.d_model,
+            n_heads=self.n_heads,
+            query_shape=self.query_shape,
+            memory_flange=self.memory_flange
+        )
+
 
 def seg(
     feature_num=128,
@@ -118,12 +139,12 @@ def seg(
     layer_out.append(en_l4)
 
     feature = en_l4
-    f_attn = MultiHead_Attention(feature, out_channel=64, query_shape=(100, 32))
+    f_attn = MultiHeadAttention(out_channel=64, query_shape=(100, 32))(feature)
 
     f_attn = BatchNormalization()(Activation("relu")(f_attn))
-    #f_attn = MultiHead_Attention(f_attn, query_shape=(32, 32))
+    #f_attn = MultiHeadAttention(query_shape=(32, 32))(f_attn)
     #f_attn = BatchNormalization()(Activation("relu")(f_attn))
-    f_attn = MultiHead_Attention(f_attn, d_model=64, out_channel=128, query_shape=(64, 16))
+    f_attn = MultiHeadAttention(d_model=64, out_channel=128, query_shape=(64, 16))(f_attn)
     f_attn = BatchNormalization()(Activation("relu")(f_attn))
     feature = concatenate([feature, f_attn])
 
@@ -170,7 +191,7 @@ def seg(
 
 import numpy as np
 if __name__ == "__main__":
-    model = seg(feature_num=128, input_channel=8, timesteps=256, out_class=3)
+    model = seg(feature_num=128, ch_num=8, timesteps=256, out_class=3)
     model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
     bs = 16

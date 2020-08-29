@@ -186,7 +186,7 @@ def embedding_to_padding(emb):
     embedding vector is all zero, and is 0 otherwise.
   """
   emb_sum = tf.reduce_sum(tf.abs(emb), axis=-1)
-  return tf.to_float(tf.equal(emb_sum, 0.0))
+  return tf.compat.v1.to_float(tf.equal(emb_sum, 0.0))
 
 
 def scatter_blocks_2d(x, indices, shape):
@@ -244,7 +244,7 @@ def dropout_with_broadcast_dims(x, keep_prob, broadcast_dims=None, **kwargs):
     kwargs["noise_shape"] = [
         1 if i in broadcast_dims else shape[i] for i in range(ndims)
     ]
-  return tf.nn.dropout(x, keep_prob, **kwargs)
+  return tf.compat.v1.nn.dropout(x, keep_prob, **kwargs)
 
 
 def dot_product_attention(q,
@@ -287,7 +287,7 @@ def dot_product_attention(q,
   Returns:
     Tensor with shape [..., length_q, depth_v].
   """
-  with tf.variable_scope(
+  with tf.compat.v1.variable_scope(
       name, default_name="dot_product_attention", values=[q, k, v]) as scope:
     logits = tf.matmul(q, k, transpose_b=True)  # [..., length_q, length_kv]
     if bias is not None:
@@ -325,7 +325,7 @@ def local_attention_2d( q, k, v, query_shape=(8, 16), memory_flange=(8, 16), nam
   Returns:
     a Tensor of shape [batch, heads, h, w, depth_v]
   """
-  with tf.variable_scope(
+  with tf.compat.v1.variable_scope(
       name, default_name="local_self_attention_2d", values=[q, k, v]):
     v_shape = shape_list(v)
 
@@ -350,7 +350,7 @@ def local_attention_2d( q, k, v, query_shape=(8, 16), memory_flange=(8, 16), nam
     v_new = gather_blocks_2d(v, k_and_v_indices)
 
     attention_bias = tf.expand_dims(
-        tf.to_float(embedding_to_padding(k_new)) * -1e9, axis=-2)
+        tf.compat.v1.to_float(embedding_to_padding(k_new)) * -1e9, axis=-2)
     output = dot_product_attention(
         q_new,
         k_new,
