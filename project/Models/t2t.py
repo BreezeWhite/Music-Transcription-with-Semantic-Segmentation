@@ -65,6 +65,33 @@ def cast_like(x, y):
   return cast_x
 
 
+def split_last_dimension(x, n):
+  """Reshape x so that the last dimension becomes two dimensions.
+  The first of these two dimensions is n.
+  Args:
+    x: a Tensor with shape [..., m]
+    n: an integer.
+  Returns:
+    a Tensor with shape [..., n, m/n]
+  """
+  x_shape = shape_list(x)
+  m = x_shape[-1]
+  if isinstance(m, int) and isinstance(n, int):
+    assert m % n == 0
+  return tf.reshape(x, x_shape[:-1] + [n, m // n])
+
+
+def split_heads_2d(x, num_heads):
+  """Split channels (dimension 3) into multiple heads (becomes dimension 1).
+  Args:
+    x: a Tensor with shape [batch, height, width, channels]
+    num_heads: an integer
+  Returns:
+    a Tensor with shape [batch, num_heads, height, width, channels / num_heads]
+  """
+  return tf.transpose(split_last_dimension(x, num_heads), [0, 3, 1, 2, 4])
+
+
 def pad_to_multiple_2d(x, block_shape):
   """Making sure x is a multiple of shape.
   Args:
