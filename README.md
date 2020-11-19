@@ -1,6 +1,8 @@
 
 # Music Transcription with Semantic Model
 
+### Notice - A new project has been launched, which also contains this work. Please visit [omnizart](https://github.com/Music-and-Culture-Technology-Lab/omnizart).
+
 This is a Automatic  Music Transcription (AMT) project, aim to deal with **Multi-pitch Estimation** (MPE) problem, which has been a long-lasting and still a challenging problem. For the transcription, we leverage the state-of-the-art image semantic segmentation neural network and attention mechanism for transcribing piano solo, and also multi-instrument performances. 
 
 The dataset used is MAPS and MusicNet, which the first one is a solo-piano performance collection, and the second is a multi-instrument performance collection.  On both dataset, we achieved the state-of-the-art results on MPE (Multi-Pitch Estimation) case frame-wisely, which on **MAPS** we achieved **F-score 86.73%**, and on **MusicNet** we achieved **F-score 73.70%**.
